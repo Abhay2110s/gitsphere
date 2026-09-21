@@ -12,6 +12,7 @@ import * as codeController from '../controllers/code.controller.js';
 import { createFileSchema } from '../validators/code.validator.js';
 import * as reviewController from '../controllers/review.controller.js';
 import { submitReviewSchema } from '../validators/review.validator.js';
+import * as messageController from '../controllers/message.controller.js';
 
 const router = Router();
 
@@ -67,5 +68,8 @@ router.post(
 );
 
 router.get('/:taskId/reviews', reviewController.getReviewsByTask);
+
+// 9. Task Chat Messages
+router.get('/:taskId/messages', messageController.getTaskMessages);
 
 export default router;

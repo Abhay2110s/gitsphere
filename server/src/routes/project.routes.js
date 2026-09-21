@@ -11,6 +11,7 @@ import {
 } from '../validators/project.validator.js';
 import * as taskController from '../controllers/task.controller.js';
 import { createTaskSchema } from '../validators/task.validator.js';
+import * as messageController from '../controllers/message.controller.js';
 
 const router = Router();
 
@@ -83,6 +84,13 @@ router.get(
   '/:projectId/tasks',
   verifyProjectAccess,
   taskController.getTasksByProject
+);
+
+// 8. Project Chat Messages
+router.get(
+  '/:projectId/messages',
+  verifyProjectAccess,
+  messageController.getProjectMessages
 );
 
 export default router;
