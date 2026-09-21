@@ -1,6 +1,8 @@
 import 'dotenv/config';
+import http from 'http';
 import app from './app.js';
 import { connectDB } from './config/db.js';
+import { initSocket } from './sockets/socket.js';
 
 const PORT = process.env.PORT || 5000;
 
@@ -12,12 +14,17 @@ const startServer = async () => {
     // 1. Connect to Database
     await connectDB();
 
-    // 2. Start HTTP Listener
-    const server = app.listen(PORT, () => {
+    // 2. Create HTTP Server & Attach Socket.IO
+    const httpServer = http.createServer(app);
+    initSocket(httpServer);
+
+    // 3. Start HTTP Listener
+    const server = httpServer.listen(PORT, () => {
       console.log(`=========================================`);
       console.log(`🚀 GitSphere Server running in ${process.env.NODE_ENV || 'development'} mode`);
       console.log(`🌐 URL: http://localhost:${PORT}`);
       console.log(`🩺 Health: http://localhost:${PORT}/api/v1/health`);
+      console.log(`🔌 Socket.IO: Initialized & listening`);
       console.log(`=========================================`);
     });
 
