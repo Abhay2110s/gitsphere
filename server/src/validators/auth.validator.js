@@ -1,37 +1,49 @@
-import { z } from 'zod';
+// Validate user registration
+export const registerSchema = (req, res, next) => {
+  const { name, email, password } = req.body;
 
-export const registerSchema = z.object({
-  name: z
-    .string({ required_error: 'Name is required' })
-    .trim()
-    .min(2, 'Name must be at least 2 characters')
-    .max(60, 'Name cannot exceed 60 characters'),
-  email: z
-    .string({ required_error: 'Email is required' })
-    .trim()
-    .email('Please provide a valid email address')
-    .toLowerCase(),
-  password: z
-    .string({ required_error: 'Password is required' })
-    .min(6, 'Password must be at least 6 characters')
-    .max(100, 'Password is too long'),
-  avatar: z.string().url('Avatar must be a valid URL').optional().or(z.literal('')),
-  bio: z.string().max(300, 'Bio cannot exceed 300 characters').optional()
-});
+  // Check required fields
+  if (!name || !email || !password) {
+    return res.status(400).json({
+      message: "Name, email and password are required"
+    });
+  }
 
-export const loginSchema = z.object({
-  email: z
-    .string({ required_error: 'Email is required' })
-    .trim()
-    .email('Please provide a valid email address')
-    .toLowerCase(),
-  password: z
-    .string({ required_error: 'Password is required' })
-    .min(1, 'Password is required')
-});
+  // Password length check
+  if (password.length < 6) {
+    return res.status(400).json({
+      message: "Password must be at least 6 characters"
+    });
+  }
 
-export const updateProfileSchema = z.object({
-  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(60).optional(),
-  bio: z.string().max(300, 'Bio cannot exceed 300 characters').optional(),
-  avatar: z.string().url('Avatar must be a valid URL').optional().or(z.literal(''))
-});
+  next();
+};
+
+// Validate login
+export const loginSchema = (req, res, next) => {
+  const { email, password } = req.body;
+
+  // Check required fields
+  if (!email || !password) {
+    return res.status(400).json({
+      message: "Email and password are required"
+    });
+  }
+
+  next();
+};
+
+// Validate profile update
+export const updateProfileSchema = (req, res, next) => {
+  const { name } = req.body;
+
+  // Check required fields
+  if (name !== undefined && (!name || !name.trim())) {
+    return res.status(400).json({
+      message: "Name cannot be empty"
+    });
+  }
+
+  next();
+};
+

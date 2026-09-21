@@ -1,51 +1,54 @@
-import { z } from 'zod';
+// Validate task creation
+export const createTaskSchema = (req, res, next) => {
+  const { title } = req.body;
 
-const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+  // Check required fields
+  if (!title || !title.trim()) {
+    return res.status(400).json({
+      message: "Task title is required"
+    });
+  }
 
-export const createTaskSchema = z.object({
-  title: z
-    .string({ required_error: 'Task title is required' })
-    .trim()
-    .min(2, 'Task title must be at least 2 characters')
-    .max(120, 'Task title cannot exceed 120 characters'),
-  description: z.string().max(2000, 'Description cannot exceed 2000 characters').optional(),
-  assignedTo: z
-    .string()
-    .regex(objectIdRegex, 'Invalid assignedTo User ID format')
-    .optional()
-    .nullable(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-  deadline: z
-    .string()
-    .datetime({ offset: true })
-    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}/))
-    .optional()
-    .nullable(),
-  labels: z.array(z.string().trim()).optional()
-});
+  next();
+};
 
-export const updateTaskSchema = z.object({
-  title: z.string().trim().min(2).max(120).optional(),
-  description: z.string().max(2000).optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-  deadline: z
-    .string()
-    .datetime({ offset: true })
-    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}/))
-    .optional()
-    .nullable(),
-  labels: z.array(z.string().trim()).optional()
-});
+// Validate task update
+export const updateTaskSchema = (req, res, next) => {
+  const { title } = req.body;
 
-export const assignTaskSchema = z.object({
-  assignedTo: z
-    .string({ required_error: 'assignedTo is required' })
-    .regex(objectIdRegex, 'Invalid assignedTo User ID format')
-    .nullable()
-});
+  // Check required fields
+  if (title !== undefined && (!title || !title.trim())) {
+    return res.status(400).json({
+      message: "Task title cannot be empty"
+    });
+  }
 
-export const updateTaskStatusSchema = z.object({
-  status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'CHANGES_REQUESTED', 'COMPLETED'], {
-    required_error: 'Status is required'
-  })
-});
+  next();
+};
+
+// Validate task assignment
+export const assignTaskSchema = (req, res, next) => {
+  next();
+};
+
+// Validate task status update
+export const updateTaskStatusSchema = (req, res, next) => {
+  const { status } = req.body;
+  const validStatuses = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'CHANGES_REQUESTED', 'COMPLETED'];
+
+  // Check required fields
+  if (!status) {
+    return res.status(400).json({
+      message: "Status is required"
+    });
+  }
+
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({
+      message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+    });
+  }
+
+  next();
+};
+

@@ -1,15 +1,20 @@
-import { z } from 'zod';
+// Validate chat message
+export const createMessageSchema = (req, res, next) => {
+  const { content, project } = req.body;
 
-export const createMessageSchema = z.object({
-  content: z
-    .string({ required_error: 'Message content is required' })
-    .trim()
-    .min(1, 'Message content cannot be empty')
-    .max(2000, 'Message cannot exceed 2000 characters'),
-  project: z
-    .string({ required_error: 'Project ID is required' })
-    .min(1, 'Project ID is required'),
-  task: z
-    .string()
-    .optional()
-});
+  // Check required fields
+  if (!content || !content.trim()) {
+    return res.status(400).json({
+      message: "Message content cannot be empty"
+    });
+  }
+
+  if (!project || !project.trim()) {
+    return res.status(400).json({
+      message: "Project ID is required"
+    });
+  }
+
+  next();
+};
+

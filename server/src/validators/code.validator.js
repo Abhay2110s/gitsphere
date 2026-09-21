@@ -1,33 +1,33 @@
-import { z } from 'zod';
+// Validate file creation
+export const createFileSchema = (req, res, next) => {
+  const { fileName } = req.body;
 
-export const createFileSchema = z.object({
-  fileName: z
-    .string({ required_error: 'File name is required' })
-    .trim()
-    .min(1, 'File name cannot be empty')
-    .max(100, 'File name cannot exceed 100 characters')
-    .regex(/^[^\\/:\*\?"<>\|]+$/, 'File name contains invalid characters'),
-  filePath: z.string().trim().default('/'),
-  language: z.string().trim().toLowerCase().optional().default('javascript'),
-  content: z.string().optional().default('// Start coding here...\n')
-});
+  // Check required fields
+  if (!fileName || !fileName.trim()) {
+    return res.status(400).json({
+      message: "File name is required"
+    });
+  }
 
-export const updateFileSchema = z.object({
-  content: z.string().optional(),
-  fileName: z
-    .string()
-    .trim()
-    .min(1)
-    .max(100)
-    .regex(/^[^\\/:\*\?"<>\|]+$/, 'File name contains invalid characters')
-    .optional(),
-  language: z.string().trim().toLowerCase().optional()
-});
+  next();
+};
 
-export const createVersionSchema = z.object({
-  commitMessage: z
-    .string({ required_error: 'Commit message is required' })
-    .trim()
-    .min(1, 'Commit message cannot be empty')
-    .max(200, 'Commit message cannot exceed 200 characters')
-});
+// Validate file update
+export const updateFileSchema = (req, res, next) => {
+  next();
+};
+
+// Validate version creation
+export const createVersionSchema = (req, res, next) => {
+  const { commitMessage } = req.body;
+
+  // Check required fields
+  if (!commitMessage || !commitMessage.trim()) {
+    return res.status(400).json({
+      message: "Commit message is required"
+    });
+  }
+
+  next();
+};
+

@@ -1,32 +1,60 @@
-import { z } from 'zod';
+// Validate line comment creation
+export const createCommentSchema = (req, res, next) => {
+  const { lineNumber, content } = req.body;
 
-export const createCommentSchema = z.object({
-  lineNumber: z
-    .number({ required_error: 'Line number is required' })
-    .int('Line number must be an integer')
-    .min(1, 'Line number must be at least 1'),
-  content: z
-    .string({ required_error: 'Comment content is required' })
-    .trim()
-    .min(1, 'Comment content cannot be empty')
-    .max(1000, 'Comment cannot exceed 1000 characters')
-});
+  // Check required fields
+  if (lineNumber === undefined || lineNumber === null) {
+    return res.status(400).json({
+      message: "Line number is required"
+    });
+  }
 
-export const updateCommentSchema = z.object({
-  content: z
-    .string({ required_error: 'Comment content is required' })
-    .trim()
-    .min(1, 'Comment content cannot be empty')
-    .max(1000, 'Comment cannot exceed 1000 characters')
-});
+  if (!content || !content.trim()) {
+    return res.status(400).json({
+      message: "Comment content is required"
+    });
+  }
 
-export const submitReviewSchema = z.object({
-  summary: z.string().trim().max(2000, 'Summary cannot exceed 2000 characters').optional()
-});
+  next();
+};
 
-export const evaluateReviewSchema = z.object({
-  status: z.enum(['APPROVED', 'CHANGES_REQUESTED'], {
-    required_error: 'Status is required (APPROVED or CHANGES_REQUESTED)'
-  }),
-  summary: z.string().trim().max(2000, 'Summary cannot exceed 2000 characters').optional()
-});
+// Validate comment update
+export const updateCommentSchema = (req, res, next) => {
+  const { content } = req.body;
+
+  // Check required fields
+  if (!content || !content.trim()) {
+    return res.status(400).json({
+      message: "Comment content is required"
+    });
+  }
+
+  next();
+};
+
+// Validate review submission
+export const submitReviewSchema = (req, res, next) => {
+  next();
+};
+
+// Validate review evaluation
+export const evaluateReviewSchema = (req, res, next) => {
+  const { status } = req.body;
+  const validStatuses = ['APPROVED', 'CHANGES_REQUESTED'];
+
+  // Check required fields
+  if (!status) {
+    return res.status(400).json({
+      message: "Status is required (APPROVED or CHANGES_REQUESTED)"
+    });
+  }
+
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({
+      message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+    });
+  }
+
+  next();
+};
+
