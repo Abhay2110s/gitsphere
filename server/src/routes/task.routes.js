@@ -8,6 +8,8 @@ import {
   assignTaskSchema,
   updateTaskStatusSchema
 } from '../validators/task.validator.js';
+import * as codeController from '../controllers/code.controller.js';
+import { createFileSchema } from '../validators/code.validator.js';
 
 const router = Router();
 
@@ -45,5 +47,14 @@ router.patch(
 
 // 6. Delete task (Manager only)
 router.delete('/:taskId', requireManager, taskController.deleteTask);
+
+// 7. Coding Workspace Files for Task
+router.post(
+  '/:taskId/files',
+  validate(createFileSchema),
+  codeController.createFile
+);
+
+router.get('/:taskId/files', codeController.getFilesByTask);
 
 export default router;
