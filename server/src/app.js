@@ -11,6 +11,8 @@ import userRoutes from './routes/user.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import taskRoutes from './routes/task.routes.js';
 import codeRoutes from './routes/code.routes.js';
+import reviewRoutes from './routes/review.routes.js';
+import commentRoutes from './routes/comment.routes.js';
 
 const app = express();
 
@@ -81,7 +83,9 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/tasks', taskRoutes);
+app.use('/api/v1/code/comments', commentRoutes);
 app.use('/api/v1/code', codeRoutes);
+app.use('/api/v1/reviews', reviewRoutes);
 
 // Catch-all for undefined routes
 app.use(notFoundHandler);

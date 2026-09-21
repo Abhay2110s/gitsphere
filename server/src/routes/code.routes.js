@@ -6,6 +6,8 @@ import {
   updateFileSchema,
   createVersionSchema
 } from '../validators/code.validator.js';
+import * as commentController from '../controllers/comment.controller.js';
+import { createCommentSchema } from '../validators/review.validator.js';
 
 const router = Router();
 
@@ -20,6 +22,14 @@ router.patch(
   codeController.updateFile
 );
 router.delete('/files/:fileId', codeController.deleteFile);
+
+// Line Comments on Code Files
+router.post(
+  '/files/:fileId/comments',
+  validate(createCommentSchema),
+  commentController.createComment
+);
+router.get('/files/:fileId/comments', commentController.getCommentsByFile);
 
 // Version history routes
 router.post(

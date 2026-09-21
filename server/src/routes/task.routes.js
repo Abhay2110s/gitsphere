@@ -10,6 +10,8 @@ import {
 } from '../validators/task.validator.js';
 import * as codeController from '../controllers/code.controller.js';
 import { createFileSchema } from '../validators/code.validator.js';
+import * as reviewController from '../controllers/review.controller.js';
+import { submitReviewSchema } from '../validators/review.validator.js';
 
 const router = Router();
 
@@ -56,5 +58,14 @@ router.post(
 );
 
 router.get('/:taskId/files', codeController.getFilesByTask);
+
+// 8. Task Reviews
+router.post(
+  '/:taskId/reviews',
+  validate(submitReviewSchema),
+  reviewController.submitReview
+);
+
+router.get('/:taskId/reviews', reviewController.getReviewsByTask);
 
 export default router;
