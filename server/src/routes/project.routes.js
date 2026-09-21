@@ -9,6 +9,8 @@ import {
   updateProjectSchema,
   addMemberSchema
 } from '../validators/project.validator.js';
+import * as taskController from '../controllers/task.controller.js';
+import { createTaskSchema } from '../validators/task.validator.js';
 
 const router = Router();
 
@@ -66,6 +68,21 @@ router.get(
   '/:projectId/members',
   verifyProjectAccess,
   projectController.getMembers
+);
+
+// 7. Tasks within Project
+router.post(
+  '/:projectId/tasks',
+  requireManager,
+  verifyProjectAccess,
+  validate(createTaskSchema),
+  taskController.createTask
+);
+
+router.get(
+  '/:projectId/tasks',
+  verifyProjectAccess,
+  taskController.getTasksByProject
 );
 
 export default router;
