@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import CodeReview from '../models/CodeReview.js';
 import Task from '../models/Task.js';
 import { AppError } from '../utils/response.js';
+import { notifyCodeSubmitted, notifyCodeReviewed } from './notification.service.js';
+import { logActivity } from './activity.service.js';
 
 /**
  * Submit code for review (Assigned User only)
@@ -43,10 +45,28 @@ export const submitReview = async (taskId, user, summary = '') => {
     summary
   });
 
-  return review.populate([
+  const populated = await review.populate([
     { path: 'submittedBy', select: 'name email avatar role' },
     { path: 'task', select: 'title status priority' }
   ]);
+
+  // Trigger notification for manager
+  notifyCodeSubmitted({
+    task,
+    submittedBy: user,
+    project: task.project
+  }).catch(() => {});
+
+  // Log activity
+  logActivity({
+    user: user._id,
+    project: task.project._id || task.project,
+    task: task._id,
+    action: 'CODE_SUBMITTED',
+    metadata: { summary }
+  });
+
+  return populated;
 };
 
 /**
@@ -99,11 +119,31 @@ export const evaluateReview = async (reviewId, manager, status, summary = '') =>
   }
   await task.save();
 
-  return review.populate([
+  const populated = await review.populate([
     { path: 'submittedBy', select: 'name email avatar role' },
     { path: 'reviewedBy', select: 'name email avatar role' },
     { path: 'task', select: 'title status priority' }
   ]);
+
+  // Notify the user who submitted the code
+  notifyCodeReviewed({
+    task,
+    review,
+    reviewer: manager,
+    submittedById: review.submittedBy._id || review.submittedBy,
+    project
+  }).catch(() => {});
+
+  // Log activity
+  logActivity({
+    user: manager._id,
+    project: project._id,
+    task: task._id,
+    action: status === 'APPROVED' ? 'CODE_APPROVED' : 'CHANGES_REQUESTED',
+    metadata: { summary, status }
+  });
+
+  return populated;
 };
 
 /**

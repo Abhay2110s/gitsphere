@@ -22,12 +22,13 @@ export class AppError extends Error {
  * @param {*} [options.data=null]
  * @param {Object|null} [options.pagination=null]
  */
-export const sendSuccess = (res, { statusCode = 200, message = 'Success', data = null, pagination = null } = {}) => {
+export const sendSuccess = (res, { statusCode = 200, message = 'Success', data = null, pagination = null, ...rest } = {}) => {
   const responsePayload = {
     success: true,
     message,
     ...(data !== null && data !== undefined ? { data } : {}),
-    ...(pagination ? { pagination } : {})
+    ...(pagination ? { pagination } : {}),
+    ...rest
   };
 
   return res.status(statusCode).json(responsePayload);

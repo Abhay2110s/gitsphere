@@ -7,7 +7,7 @@ import { sendError } from '../utils/response.js';
  */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Limit each IP to 20 requests per window
+  max: process.env.NODE_ENV === 'production' ? 20 : 1000, // Generous limit in dev/test for test runners
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   handler: (req, res) => {

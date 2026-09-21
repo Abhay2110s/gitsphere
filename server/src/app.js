@@ -4,6 +4,10 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerDocument } from './config/swagger.js';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware.js';
 import { sendSuccess } from './utils/response.js';
 import authRoutes from './routes/auth.routes.js';
@@ -14,11 +18,28 @@ import codeRoutes from './routes/code.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import commentRoutes from './routes/comment.routes.js';
 import messageRoutes from './routes/message.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
+import activityRoutes from './routes/activity.routes.js';
+import attachmentRoutes from './routes/attachment.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Swagger Documentation UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Serve uploaded static files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Security HTTP headers
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false
+  })
+);
 
 // Cross-Origin Resource Sharing setup
 app.use(
@@ -88,6 +109,10 @@ app.use('/api/v1/code/comments', commentRoutes);
 app.use('/api/v1/code', codeRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/messages', messageRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/activity', activityRoutes);
+app.use('/api/v1/attachments', attachmentRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 
 // Catch-all for undefined routes
 app.use(notFoundHandler);

@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: gitsphere_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/gitsphere
+      - CLIENT_URL=http://localhost:5173
+      - JWT_SECRET=gitsphere_docker_jwt_secret_key_2026
+      - JWT_EXPIRES_IN=7d
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - server_uploads:/app/uploads
+
+  mongodb:
+    image: mongo:7.0
+    container_name: gitsphere_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  mongodb_data:
+  server_uploads:

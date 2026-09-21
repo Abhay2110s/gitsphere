@@ -8,7 +8,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed:manager": "node src/scripts/seedManager.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node src/scripts/runAllTests.js"
   },
   "keywords": [
     "gitsphere",
@@ -30,8 +30,10 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.5",
     "morgan": "^1.10.0",
+    "multer": "^2.4.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {

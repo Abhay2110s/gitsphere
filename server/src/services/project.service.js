@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
 import { AppError } from '../utils/response.js';
+import { notifyMemberAdded } from './notification.service.js';
+import { logActivity } from './activity.service.js';
 
 /**
  * Create a new project (Manager only)
@@ -13,9 +15,18 @@ export const createProject = async (managerId, projectData) => {
     members: [] // Members added explicitly
   });
 
-  return project.populate([
+  const populated = await project.populate([
     { path: 'createdBy', select: 'name email avatar' }
   ]);
+
+  logActivity({
+    user: managerId,
+    project: project._id,
+    action: 'PROJECT_CREATED',
+    metadata: { projectName: project.name }
+  });
+
+  return populated;
 };
 
 /**
@@ -148,10 +159,27 @@ export const addMember = async (projectId, memberUserId) => {
   project.members.push(memberUserId);
   await project.save();
 
-  return project.populate([
+  const populated = await project.populate([
     { path: 'createdBy', select: 'name email avatar' },
     { path: 'members', select: 'name email avatar bio' }
   ]);
+
+  // Notify the added user
+  notifyMemberAdded({
+    project,
+    addedUserId: memberUserId,
+    managerId: project.createdBy._id || project.createdBy
+  }).catch(() => {});
+
+  // Log milestone activity
+  logActivity({
+    user: project.createdBy._id || project.createdBy,
+    project: project._id,
+    action: 'MEMBER_ADDED',
+    metadata: { memberId: memberUserId, memberName: targetUser.name }
+  });
+
+  return populated;
 };
 
 /**
@@ -170,6 +198,13 @@ export const removeMember = async (projectId, memberUserId) => {
 
   project.members = project.members.filter((id) => !id.equals(memberUserId));
   await project.save();
+
+  logActivity({
+    user: project.createdBy,
+    project: project._id,
+    action: 'MEMBER_REMOVED',
+    metadata: { memberId: memberUserId }
+  });
 
   return project.populate([
     { path: 'createdBy', select: 'name email avatar' },

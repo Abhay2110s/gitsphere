@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import CodeComment from '../models/CodeComment.js';
 import CodeFile from '../models/CodeFile.js';
 import { AppError } from '../utils/response.js';
+import { notifyCommentAdded } from './notification.service.js';
+import { logActivity } from './activity.service.js';
 
 /**
  * Helper to verify file and project access for comments
@@ -41,7 +43,7 @@ const verifyFileForComment = async (fileId, user) => {
  * Add a line comment on a code file
  */
 export const createComment = async (fileId, user, lineNumber, content) => {
-  const { file, task } = await verifyFileForComment(fileId, user);
+  const { file, task, project } = await verifyFileForComment(fileId, user);
 
   const comment = await CodeComment.create({
     file: file._id,
@@ -51,10 +53,29 @@ export const createComment = async (fileId, user, lineNumber, content) => {
     content
   });
 
-  return comment.populate([
+  const populated = await comment.populate([
     { path: 'user', select: 'name email avatar role' },
     { path: 'resolvedBy', select: 'name email avatar' }
   ]);
+
+  // Notify relevant users
+  notifyCommentAdded({
+    file,
+    task,
+    commentBy: user,
+    project
+  }).catch(() => {});
+
+  // Log activity
+  logActivity({
+    user: user._id,
+    project: project._id,
+    task: task._id,
+    action: 'COMMENT_ADDED',
+    metadata: { fileName: file.fileName, lineNumber }
+  });
+
+  return populated;
 };
 
 /**

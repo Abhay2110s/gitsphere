@@ -3,6 +3,7 @@ import { verifyToken } from '../utils/jwt.js';
 import User from '../models/User.js';
 import { registerCodeHandlers } from './code.socket.js';
 import { registerChatHandlers } from './chat.socket.js';
+import { registerNotificationHandlers } from './notification.socket.js';
 
 let ioInstance = null;
 
@@ -86,6 +87,7 @@ export const initSocket = (httpServer) => {
     // Register modular socket handlers
     registerCodeHandlers(io, socket);
     registerChatHandlers(io, socket);
+    registerNotificationHandlers(io, socket);
   });
 
   ioInstance = io;

@@ -3,6 +3,8 @@ import Task from '../models/Task.js';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
 import { AppError } from '../utils/response.js';
+import { notifyTaskAssigned, notifyTaskStatusChanged } from './notification.service.js';
+import { logActivity } from './activity.service.js';
 
 /**
  * Create a new coding task inside a project (Manager only)
@@ -46,7 +48,27 @@ export const createTask = async (managerId, projectId, taskData) => {
     { path: 'createdBy', select: 'name email avatar' },
     { path: 'assignedTo', select: 'name email avatar' },
     { path: 'project', select: 'name status' }
-  ]);
+  ]).then(async (populatedTask) => {
+    // Notify assigned user if task was assigned at creation
+    if (taskData.assignedTo) {
+      notifyTaskAssigned({
+        task: populatedTask,
+        assignedUserId: taskData.assignedTo,
+        managerId,
+        project
+      }).catch(() => {}); // Fire-and-forget; don't fail task creation on notification error
+    }
+
+    logActivity({
+      user: managerId,
+      project: projectId,
+      task: populatedTask._id,
+      action: 'TASK_CREATED',
+      metadata: { title: populatedTask.title, priority: populatedTask.priority }
+    });
+
+    return populatedTask;
+  });
 };
 
 /**
@@ -245,10 +267,30 @@ export const assignTask = async (taskId, managerId, assignedUserId) => {
   task.assignedTo = assignedUserId || null;
   await task.save();
 
-  return task.populate([
+  const populatedTask = await task.populate([
     { path: 'createdBy', select: 'name email avatar' },
     { path: 'assignedTo', select: 'name email avatar' }
   ]);
+
+  // Notify the newly assigned user
+  if (assignedUserId) {
+    notifyTaskAssigned({
+      task: populatedTask,
+      assignedUserId,
+      managerId,
+      project: task.project
+    }).catch(() => {});
+  }
+
+  logActivity({
+    user: managerId,
+    project: task.project._id || task.project,
+    task: task._id,
+    action: 'TASK_ASSIGNED',
+    metadata: { assignedTo: assignedUserId }
+  });
+
+  return populatedTask;
 };
 
 /**
@@ -309,13 +351,32 @@ export const updateTaskStatus = async (taskId, user, newStatus) => {
     }
   }
 
+  const oldStatus = task.status;
   task.status = newStatus;
   await task.save();
 
-  return task.populate([
+  const populatedTask = await task.populate([
     { path: 'createdBy', select: 'name email avatar' },
     { path: 'assignedTo', select: 'name email avatar' }
   ]);
+
+  // Notify relevant users of status change
+  notifyTaskStatusChanged({
+    task: populatedTask,
+    changedBy: user,
+    newStatus,
+    project: task.project
+  }).catch(() => {});
+
+  logActivity({
+    user: user._id,
+    project: task.project._id || task.project,
+    task: task._id,
+    action: 'TASK_STATUS_CHANGED',
+    metadata: { oldStatus, newStatus }
+  });
+
+  return populatedTask;
 };
 
 /**
