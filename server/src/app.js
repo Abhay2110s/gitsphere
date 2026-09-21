@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware.js';
 import { sendSuccess } from './utils/response.js';
+import authRoutes from './routes/auth.routes.js';
+import userRoutes from './routes/user.routes.js';
 
 const app = express();
 
@@ -70,6 +72,10 @@ app.get('/api/v1/health', (req, res) => {
     }
   });
 });
+
+// API Routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
 
 // Catch-all for undefined routes
 app.use(notFoundHandler);
