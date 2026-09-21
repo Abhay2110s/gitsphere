@@ -82,6 +82,11 @@ userSchema.pre('save', async function (next) {
     return next();
   }
 
+  // If already bcrypt hashed (starts with $2a$ or $2b$)
+  if (/^\$2[ab]\$\d{2}\$/.test(this.password)) {
+    return next();
+  }
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
