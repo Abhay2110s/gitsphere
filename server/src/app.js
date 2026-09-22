@@ -66,12 +66,6 @@ if (process.env.NODE_ENV !== 'test') {
 app.get('/', (req, res) => {
   return sendSuccess(res, {
     message: 'Welcome to GitSphere API - Real-Time Collaborative Coding & Code Review Platform',
-    data: {
-      name: 'GitSphere API',
-      version: '1.0.0',
-      status: 'operational',
-      docs: '/api-docs'
-    }
   });
 });
 
