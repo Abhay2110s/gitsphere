@@ -7,8 +7,9 @@ yarn-error.log*
 dist/
 build/
 .DS_Store
-*.log
 uploads/*
 server/uploads/*
-!server/uploads/.gitkeep
+Backend/uploads/*
+!Backend/uploads/.gitkeep
+
 

@@ -1,11 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import FileAttachment from '../models/FileAttachment.js';
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsDir = path.join(__dirname, '../../uploads');
 
 /**
  * Save an uploaded file attachment record
@@ -117,7 +121,7 @@ export const deleteAttachment = async (attachmentId, user) => {
 
   // Delete local file if it exists on disk
   try {
-    const filePath = path.join(process.cwd(), 'server/uploads', attachment.storageKey);
+    const filePath = path.join(uploadsDir, attachment.storageKey);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
