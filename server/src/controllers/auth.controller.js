@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { clearTokenCookie } from "../utils/jwt.js";
+import { sendLoginAlertEmail } from "../services/email.service.js";
 
 // API for register user
 const registerUser = async (req, res) => {
@@ -155,8 +156,21 @@ const loginUser = async (req, res) => {
     });
 
     // Update last seen
-    user.lastSeen = new Date();
+    const loginTime = new Date();
+    user.lastSeen = loginTime;
     await user.save({ validateBeforeSave: false });
+
+    // Dispatch login alert email via nodemailer with exact login time
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    sendLoginAlertEmail({
+      user,
+      loginTime,
+      ipAddress,
+      userAgent
+    }).catch((err) => {
+      console.error('[Nodemailer] Background dispatch error:', err.message);
+    });
 
     const userPayload = {
       id: user._id,
