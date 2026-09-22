@@ -3,6 +3,7 @@ import Task from '../models/Task.js';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
 import { AppError } from '../utils/response.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { notifyTaskAssigned, notifyTaskStatusChanged } from './notification.service.js';
 import { logActivity } from './activity.service.js';
 
@@ -81,15 +82,12 @@ export const getTasksByProject = async (user, projectId, queryParams = {}) => {
   }
 
   // Access check
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied to tasks of this project.', 403, 'FORBIDDEN');
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to tasks of this project.'
+        : 'Access denied. You are not a member of this project.';
+    throw new AppError(message, 403, 'FORBIDDEN');
   }
 
   const page = parseInt(queryParams.page, 10) || 1;
@@ -151,15 +149,12 @@ export const getTaskById = async (taskId, user) => {
 
   // Access check: User must be Manager creator or project member
   const project = task.project;
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied to this task.', 403, 'FORBIDDEN');
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this task\'s project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to this task.'
+        : "Access denied. You are not a member of this task's project.";
+    throw new AppError(message, 403, 'FORBIDDEN');
   }
 
   return task;

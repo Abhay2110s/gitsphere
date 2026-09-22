@@ -35,7 +35,7 @@ export const login = async ({ email, password }) => {
   const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
   if (!user) {
-    throw new AppError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
+    throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
   if (!user.isActive) {
@@ -45,7 +45,7 @@ export const login = async ({ email, password }) => {
   // Compare passwords
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
-    throw new AppError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
+    throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
   // Update last seen timestamp

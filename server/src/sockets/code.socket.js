@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import Task from '../models/Task.js';
+import Project from '../models/Project.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import {
   addPresence,
   updatePresence,
@@ -24,15 +26,12 @@ const verifyRoomAccess = async (taskId, user) => {
 
   const project = task.project;
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      return { authorized: false, message: 'Access denied to tasks outside your projects' };
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      return { authorized: false, message: 'Access denied. You are not a member of this project.' };
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to tasks outside your projects'
+        : 'Access denied. You are not a member of this project.';
+    return { authorized: false, message };
   }
 
   return { authorized: true, task, project };
@@ -55,22 +54,18 @@ export const registerCodeHandlers = (io, socket) => {
         return socket.emit('code:error', { message: 'Invalid Project ID format' });
       }
 
-      const Project = (await import('../models/Project.js')).default;
       const project = await Project.findById(projectId);
       if (!project) {
         return socket.emit('code:error', { message: 'Project not found' });
       }
 
       // Verify access
-      if (user.role === 'MANAGER') {
-        if (!project.createdBy.equals(user._id)) {
-          return socket.emit('code:error', { message: 'Access denied to this project' });
-        }
-      } else {
-        const isMember = project.members.some((m) => m.equals(user._id));
-        if (!isMember) {
-          return socket.emit('code:error', { message: 'Access denied. You are not a member of this project.' });
-        }
+      if (!hasProjectAccess(project, user)) {
+        const message =
+          user.role === 'MANAGER'
+            ? 'Access denied to this project'
+            : 'Access denied. You are not a member of this project.';
+        return socket.emit('code:error', { message });
       }
 
       const roomName = `project:${projectId}`;

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import ActivityLog from '../models/ActivityLog.js';
 import Project from '../models/Project.js';
 import { AppError } from '../utils/response.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { getIO } from '../sockets/socket.js';
 
 /**
@@ -74,15 +75,12 @@ export const getActivities = async (user, queryParams = {}) => {
       throw new AppError('Project not found', 404, 'NOT_FOUND');
     }
 
-    if (user.role === 'MANAGER') {
-      if (!project.createdBy.equals(user._id)) {
-        throw new AppError('Access denied to activities for this project', 403, 'FORBIDDEN');
-      }
-    } else {
-      const isMember = project.members.some((m) => m.equals(user._id));
-      if (!isMember) {
-        throw new AppError('Access denied. You are not a member of this project', 403, 'FORBIDDEN');
-      }
+    if (!hasProjectAccess(project, user)) {
+      const message =
+        user.role === 'MANAGER'
+          ? 'Access denied to activities for this project'
+          : 'Access denied. You are not a member of this project';
+      throw new AppError(message, 403, 'FORBIDDEN');
     }
 
     query.project = queryParams.projectId;

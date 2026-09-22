@@ -4,6 +4,7 @@ import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
 import { AppError } from '../utils/response.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { logActivity } from './activity.service.js';
 import { createNotification } from './notification.service.js';
 import { getIO } from '../sockets/socket.js';
@@ -21,15 +22,12 @@ const verifyProjectMembership = async (projectId, user) => {
     throw new AppError('Project not found', 404, 'NOT_FOUND');
   }
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied. You can only access projects you created.', 403, 'FORBIDDEN');
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied. You can only access projects you created.'
+        : 'Access denied. You are not a member of this project.';
+    throw new AppError(message, 403, 'FORBIDDEN');
   }
 
   return project;

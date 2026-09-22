@@ -3,6 +3,7 @@ import Message from '../models/Message.js';
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import { AppError } from '../utils/response.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 
 /**
  * Helper to verify the user is a project member or the project manager
@@ -17,15 +18,12 @@ const verifyProjectAccess = async (projectId, user) => {
     throw new AppError('Project not found', 404, 'NOT_FOUND');
   }
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied. You can only chat in projects you created.', 403, 'FORBIDDEN');
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied. You can only chat in projects you created.'
+        : 'Access denied. You are not a member of this project.';
+    throw new AppError(message, 403, 'FORBIDDEN');
   }
 
   return project;

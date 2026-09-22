@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 import CodeFile from '../models/CodeFile.js';
 import CodeVersion from '../models/CodeVersion.js';
 import Task from '../models/Task.js';
-import Project from '../models/Project.js';
 import { AppError } from '../utils/response.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 
 /**
  * Helper to verify task and project access permissions
@@ -20,22 +20,18 @@ const verifyTaskAccess = async (taskId, user, requireWrite = false) => {
 
   const project = task.project;
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied to tasks outside your projects.', 403, 'FORBIDDEN');
-    }
-  } else {
-    // Regular User
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to tasks outside your projects.'
+        : 'Access denied. You are not a member of this project.';
+    throw new AppError(message, 403, 'FORBIDDEN');
+  }
 
-    // Rule 6: Users can edit only their own assigned task code
-    if (requireWrite) {
-      if (!task.assignedTo || !task.assignedTo.equals(user._id)) {
-        throw new AppError('Permission denied. You can only create or edit code in your assigned tasks.', 403, 'FORBIDDEN');
-      }
+  // Regular User write permission check
+  if (user.role !== 'MANAGER' && requireWrite) {
+    if (!task.assignedTo || !task.assignedTo.equals(user._id)) {
+      throw new AppError('Permission denied. You can only create or edit code in your assigned tasks.', 403, 'FORBIDDEN');
     }
   }
 
@@ -43,7 +39,7 @@ const verifyTaskAccess = async (taskId, user, requireWrite = false) => {
 };
 
 /**
- * Helper to verify file access and return populated file
+ * Helper to verify code file access
  */
 const verifyFileAccess = async (fileId, user, requireWrite = false) => {
   if (!mongoose.Types.ObjectId.isValid(fileId)) {
@@ -62,22 +58,18 @@ const verifyFileAccess = async (fileId, user, requireWrite = false) => {
   const task = file.task;
   const project = task.project;
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied to files outside your projects.', 403, 'FORBIDDEN');
-    }
-  } else {
-    // User role
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to files outside your projects.'
+        : 'Access denied. You are not a member of this project.';
+    throw new AppError(message, 403, 'FORBIDDEN');
+  }
 
-    // Rule 6: Users can edit only their own assigned task code
-    if (requireWrite) {
-      if (!task.assignedTo || !task.assignedTo.equals(user._id)) {
-        throw new AppError('Permission denied. You can only edit code in tasks assigned to you.', 403, 'FORBIDDEN');
-      }
+  // Regular User write permission check
+  if (user.role !== 'MANAGER' && requireWrite) {
+    if (!task.assignedTo || !task.assignedTo.equals(user._id)) {
+      throw new AppError('Permission denied. You can only edit code in tasks assigned to you.', 403, 'FORBIDDEN');
     }
   }
 

@@ -1,159 +1,89 @@
 import nodemailer from 'nodemailer';
 
-let transporter = null;
-
 /**
- * Initialize or retrieve the nodemailer transporter.
- * Supports explicit SMTP settings, Gmail service, or JSON test fallback.
+ * Configure Nodemailer Transporter
  */
-export const getTransporter = () => {
-  if (transporter) return transporter;
-
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+const createTransporter = () => {
   const user = process.env.SMTP_USER || process.env.EMAIL_USER;
   const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
-  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
   if (user && pass) {
-    if (host) {
-      transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass }
-      });
-    } else {
-      // Default to service-based (e.g. Gmail)
-      transporter = nodemailer.createTransport({
-        service: process.env.EMAIL_SERVICE || 'gmail',
+    if (process.env.SMTP_HOST) {
+      return nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT, 10) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
         auth: { user, pass }
       });
     }
-  } else {
-    // Development / Test fallback: create transport that logs to console or suppresses
-    transporter = nodemailer.createTransport({
-      streamTransport: true,
-      newline: 'windows',
-      buffer: true
+
+    return nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE || 'gmail',
+      auth: { user, pass }
     });
   }
 
-  return transporter;
+  // Fallback stream for testing & local development without credentials
+  return nodemailer.createTransport({
+    streamTransport: true,
+    buffer: true
+  });
 };
 
+const transporter = createTransporter();
+
 /**
- * Send an email notification alerting the user about their login time and details.
- *
- * @param {Object} params
- * @param {Object} params.user - The user object { name, email, role }
- * @param {Date} params.loginTime - The login timestamp
- * @param {string} [params.ipAddress] - IP address of the client
- * @param {string} [params.userAgent] - Browser/Device user-agent string
+ * Send OTP Verification Email
+ * @param {string|Object} emailOrOptions - Recipient email address or options object
+ * @param {string|number} [otpCode] - The OTP code
  */
-export const sendLoginAlertEmail = async ({ user, loginTime = new Date(), ipAddress = 'Unknown', userAgent = 'Unknown' }) => {
+export const sendOTP = async (emailOrOptions, otpCode) => {
   try {
-    const transport = getTransporter();
-    const fromAddress = process.env.EMAIL_FROM || '"GitSphere Security" <no-reply@gitsphere.com>';
-    const formattedTimeUTC = loginTime.toUTCString();
-    const formattedTimeLocal = loginTime.toLocaleString();
+    const email = typeof emailOrOptions === 'object' ? emailOrOptions.email : emailOrOptions;
+    const otp = typeof emailOrOptions === 'object' ? emailOrOptions.otp : otpCode;
 
-    const subject = '🔐 GitSphere: New Login Detected on Your Account';
-
-    const textContent = `Hello ${user.name},\n\nA new login was detected on your GitSphere account.\n\n` +
-      `Login Details:\n` +
-      `- Time: ${formattedTimeLocal} (${formattedTimeUTC})\n` +
-      `- Account: ${user.email}\n` +
-      `- Role: ${user.role}\n` +
-      `- IP Address: ${ipAddress}\n` +
-      `- Device/Client: ${userAgent}\n\n` +
-      `If this was you, no action is needed.\n` +
-      `If you did not log in, please reset your password immediately and notify your administrator.\n\n` +
-      `Best regards,\nGitSphere Security Team`;
-
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
-    .card { max-width: 560px; margin: 0 auto; background: #1e293b; border-radius: 12px; border: 1px solid #334155; padding: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    .header { text-align: center; margin-bottom: 24px; }
-    .logo { font-size: 24px; font-weight: 700; color: #38bdf8; letter-spacing: -0.5px; }
-    .title { font-size: 18px; font-weight: 600; color: #f8fafc; margin-top: 8px; }
-    .details { background: #0f172a; border-radius: 8px; border: 1px solid #334155; padding: 16px; margin: 20px 0; }
-    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1e293b; font-size: 14px; }
-    .row:last-child { border-bottom: none; }
-    .label { color: #94a3b8; font-weight: 500; }
-    .val { color: #f8fafc; font-weight: 600; text-align: right; }
-    .time-badge { color: #38bdf8; font-weight: 700; }
-    .warning { font-size: 13px; color: #f59e0b; background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px; margin-top: 20px; }
-    .footer { text-align: center; font-size: 12px; color: #64748b; margin-top: 28px; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="header">
-      <div class="logo">⚡ GitSphere</div>
-      <div class="title">New Login Notification</div>
-    </div>
-    <p>Hello <strong>${user.name}</strong>,</p>
-    <p>We detected a new successful sign-in to your GitSphere account.</p>
-    
-    <div class="details">
-      <div class="row">
-        <span class="label">📅 Login Time:</span>
-        <span class="val time-badge">${formattedTimeLocal}</span>
-      </div>
-      <div class="row">
-        <span class="label">🌐 UTC Timestamp:</span>
-        <span class="val">${formattedTimeUTC}</span>
-      </div>
-      <div class="row">
-        <span class="label">👤 Account:</span>
-        <span class="val">${user.email}</span>
-      </div>
-      <div class="row">
-        <span class="label">🛡️ Role:</span>
-        <span class="val">${user.role}</span>
-      </div>
-      <div class="row">
-        <span class="label">📍 IP Address:</span>
-        <span class="val">${ipAddress}</span>
-      </div>
-      <div class="row">
-        <span class="label">💻 Device / Agent:</span>
-        <span class="val">${userAgent}</span>
-      </div>
-    </div>
-
-    <div class="warning">
-      <strong>Didn't log in?</strong> If this was not you, someone else may have gained access to your account. Please change your password immediately.
-    </div>
-
-    <div class="footer">
-      This is an automated security notice from GitSphere. Please do not reply directly to this email.
-    </div>
-  </div>
-</body>
-</html>
-    `;
+    if (!email || !otp) {
+      console.warn('[Email] Recipient email and OTP are required');
+      return null;
+    }
 
     const mailOptions = {
-      from: fromAddress,
-      to: user.email,
-      subject,
-      text: textContent,
-      html: htmlContent
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER || '"GitSphere" <no-reply@gitsphere.com>',
+      to: email,
+      subject: `Your GitSphere OTP: ${otp}`,
+      text: `Your GitSphere verification OTP code is: ${otp}. It is valid for 10 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #2563eb; margin-top: 0;">GitSphere Verification</h2>
+          <p style="color: #475569; font-size: 15px;">Your One-Time Password (OTP) is:</p>
+          <div style="background: #f1f5f9; padding: 16px; border-radius: 6px; text-align: center; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1e293b;">${otp}</span>
+          </div>
+          <p style="color: #64748b; font-size: 13px;">This code is valid for 10 minutes. Please do not share it with anyone.</p>
+        </div>
+      `
     };
 
-    const info = await transport.sendMail(mailOptions);
-    console.log(`[Nodemailer] Login notification email dispatched to ${user.email} (Time: ${formattedTimeLocal})`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[Email] OTP sent successfully to ${email}`);
     return info;
   } catch (error) {
-    console.error(`[Nodemailer] Error sending login notification email to ${user.email}:`, error.message);
-    // Non-blocking: We do not fail the user login if the email transport fails
+    console.error('[Email Error] Failed to send OTP:', error.message);
     return null;
   }
+};
+
+// Aliases for compatibility
+export const sendOTPEmail = sendOTP;
+export const sendLoginAlertEmail = async ({ user } = {}) => {
+  if (user?.email) {
+    return sendOTP(user.email, 'LOGIN');
+  }
+  return null;
+};
+
+export default {
+  sendOTP,
+  sendOTPEmail,
+  sendLoginAlertEmail
 };

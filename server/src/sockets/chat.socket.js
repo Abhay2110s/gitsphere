@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Message from '../models/Message.js';
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 
 /**
  * Verify the user can access the project chat room
@@ -17,15 +18,12 @@ const verifyChatAccess = async (projectId, user) => {
     return { authorized: false, message: 'Project not found' };
   }
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      return { authorized: false, message: 'Access denied to chat in projects you did not create' };
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      return { authorized: false, message: 'Access denied. You are not a member of this project.' };
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to chat in projects you did not create'
+        : 'Access denied. You are not a member of this project.';
+    return { authorized: false, message };
   }
 
   return { authorized: true, project };

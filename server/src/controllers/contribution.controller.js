@@ -1,6 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as contributionService from '../services/contribution.service.js';
-import { sendSuccess } from '../utils/response.js';
+import { sendSuccess, AppError } from '../utils/response.js';
 
 /**
  * @desc    Submit a new code contribution
@@ -24,10 +24,7 @@ export const createContribution = asyncHandler(async (req, res) => {
 export const getContributions = asyncHandler(async (req, res) => {
   const { projectId } = req.query;
   if (!projectId) {
-    return res.status(400).json({
-      success: false,
-      message: 'projectId query parameter is required'
-    });
+    throw new AppError('projectId query parameter is required', 400, 'VALIDATION_ERROR');
   }
 
   const { contributions, pagination } = await contributionService.getContributionsByProject(

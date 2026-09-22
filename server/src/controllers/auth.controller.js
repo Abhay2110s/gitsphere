@@ -1,249 +1,121 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import User from "../models/User.js";
-import { clearTokenCookie } from "../utils/jwt.js";
-import { sendLoginAlertEmail } from "../services/email.service.js";
+import { asyncHandler } from '../utils/asyncHandler.js';
+import * as authService from '../services/auth.service.js';
+import { generateToken, setTokenCookie, clearTokenCookie } from '../utils/jwt.js';
+import { sendSuccess } from '../utils/response.js';
+import { sendLoginAlertEmail } from '../services/email.service.js';
 
-// API for register user
-const registerUser = async (req, res) => {
-  try {
-    const { name, email, password, avatar = "", bio = "" } = req.body;
+/**
+ * @desc    Register a new user (strictly USER role)
+ * @route   POST /api/v1/auth/register
+ * @access  Public
+ */
+export const registerUser = asyncHandler(async (req, res) => {
+  const user = await authService.register(req.body);
 
-    // Check required fields
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, email and password are required"
-      });
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        errorCode: "DUPLICATE_RESOURCE",
-        message: "An account with this email address already exists."
-      });
-    }
-
-    // Hash password
-    const hashPassword = await bcrypt.hash(password, 10);
-
-    // Create user (Public registration strictly defaults to USER role)
-    const user = await User.create({
-      name,
-      email: email.toLowerCase(),
-      password: hashPassword,
-      avatar,
-      bio,
-      role: "USER",
-      isActive: true,
-      lastSeen: new Date()
-    });
-
-    // Create JWT
-    const token = jwt.sign(
-      {
-        id: user._id,
-        userId: user._id,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || "7d"
-      }
-    );
-
-    // Set HTTP-only cookie
-    res.cookie("token", token, {
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
-    });
-
-    const userPayload = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    };
-
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      token,
-      user: userPayload,
-      data: {
-        token,
-        user: userPayload
-      }
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-};
-
-// API for login
-const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Check required fields
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required"
-      });
-    }
-
-    // Find user and include password for comparison
-    const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        errorCode: "INVALID_CREDENTIALS",
-        message: "Invalid email or password"
-      });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({
-        success: false,
-        errorCode: "ACCOUNT_DEACTIVATED",
-        message: "Your account has been deactivated. Please contact your manager."
-      });
-    }
-
-    // Compare password
-    const isPassword = await bcrypt.compare(password, user.password);
-
-    if (!isPassword) {
-      return res.status(401).json({
-        success: false,
-        errorCode: "INVALID_CREDENTIALS",
-        message: "Invalid email or password"
-      });
-    }
-
-    // Create JWT
-    const token = jwt.sign(
-      {
-        id: user._id,
-        userId: user._id,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || "7d"
-      }
-    );
-
-    // Set HTTP-only cookie
-    res.cookie("token", token, {
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
-    });
-
-    // Update last seen
-    const loginTime = new Date();
-    user.lastSeen = loginTime;
-    await user.save({ validateBeforeSave: false });
-
-    // Dispatch login alert email via nodemailer with exact login time
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown';
-    const userAgent = req.headers['user-agent'] || 'Unknown';
-    sendLoginAlertEmail({
-      user,
-      loginTime,
-      ipAddress,
-      userAgent
-    }).catch((err) => {
-      console.error('[Nodemailer] Background dispatch error:', err.message);
-    });
-
-    const userPayload = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    };
-
-    // Send response
-    return res.status(200).json({
-      success: true,
-      message: "Login successful",
-      token,
-      user: userPayload,
-      data: {
-        token,
-        user: userPayload
-      }
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-};
-
-// API for get current user
-const getMe = async (req, res) => {
-  try {
-    const userId = req.user?._id || req.user?.id || req.user?.userId;
-    const user = await User.findById(userId).select("-password");
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        errorCode: "NOT_FOUND",
-        message: "User not found"
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Current user profile retrieved",
-      user,
-      data: user
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-};
-
-// API for logout
-const logout = async (req, res) => {
-  clearTokenCookie(res);
-  return res.status(200).json({
-    success: true,
-    message: "Logged out successfully"
+  const token = generateToken({
+    id: user._id,
+    userId: user._id,
+    role: user.role
   });
-};
+
+  setTokenCookie(res, token);
+
+  const userPayload = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role
+  };
+
+  return sendSuccess(res, {
+    statusCode: 201,
+    message: 'User registered successfully',
+    token,
+    user: userPayload,
+    data: {
+      token,
+      user: userPayload
+    }
+  });
+});
+
+/**
+ * @desc    Authenticate user credentials and login
+ * @route   POST /api/v1/auth/login
+ * @access  Public
+ */
+export const loginUser = asyncHandler(async (req, res) => {
+  const user = await authService.login(req.body);
+
+  const token = generateToken({
+    id: user._id,
+    userId: user._id,
+    role: user.role
+  });
+
+  setTokenCookie(res, token);
+
+  // Dispatch login alert email via nodemailer in background
+  const loginTime = user.lastSeen || new Date();
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown';
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  sendLoginAlertEmail({
+    user,
+    loginTime,
+    ipAddress,
+    userAgent
+  }).catch((err) => {
+    console.error('[Nodemailer] Background dispatch error:', err.message);
+  });
+
+  const userPayload = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role
+  };
+
+  return sendSuccess(res, {
+    statusCode: 200,
+    message: 'Login successful',
+    token,
+    user: userPayload,
+    data: {
+      token,
+      user: userPayload
+    }
+  });
+});
+
+/**
+ * @desc    Get current authenticated user profile
+ * @route   GET /api/v1/auth/me
+ * @access  Private
+ */
+export const getMe = asyncHandler(async (req, res) => {
+  const userId = req.user?._id || req.user?.id || req.user?.userId;
+  const user = await authService.getUserById(userId);
+
+  return sendSuccess(res, {
+    message: 'Current user profile retrieved',
+    user,
+    data: user
+  });
+});
+
+/**
+ * @desc    Log out current user and clear cookie
+ * @route   POST /api/v1/auth/logout
+ * @access  Private
+ */
+export const logout = asyncHandler(async (req, res) => {
+  clearTokenCookie(res);
+  return sendSuccess(res, {
+    message: 'Logged out successfully'
+  });
+});
 
 export {
-  registerUser,
-  loginUser,
-  getMe,
-  logout,
   registerUser as register,
   loginUser as login
 };

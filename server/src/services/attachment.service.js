@@ -5,6 +5,7 @@ import FileAttachment from '../models/FileAttachment.js';
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import { AppError } from '../utils/response.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 
 /**
  * Save an uploaded file attachment record
@@ -24,15 +25,12 @@ export const createAttachment = async ({ file, user, projectId = null, taskId = 
       throw new AppError('Project not found', 404, 'NOT_FOUND');
     }
 
-    if (user.role === 'MANAGER') {
-      if (!project.createdBy.equals(user._id)) {
-        throw new AppError('Access denied to upload files to this project', 403, 'FORBIDDEN');
-      }
-    } else {
-      const isMember = project.members.some((m) => m.equals(user._id));
-      if (!isMember) {
-        throw new AppError('Access denied. You are not a member of this project', 403, 'FORBIDDEN');
-      }
+    if (!hasProjectAccess(project, user)) {
+      const message =
+        user.role === 'MANAGER'
+          ? 'Access denied to upload files to this project'
+          : 'Access denied. You are not a member of this project';
+      throw new AppError(message, 403, 'FORBIDDEN');
     }
   }
 

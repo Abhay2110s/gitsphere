@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import CodeReview from '../models/CodeReview.js';
 import Task from '../models/Task.js';
 import { AppError } from '../utils/response.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { notifyCodeSubmitted, notifyCodeReviewed } from './notification.service.js';
 import { logActivity } from './activity.service.js';
 
@@ -161,15 +162,12 @@ export const getReviewsByTask = async (taskId, user) => {
 
   const project = task.project;
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied to reviews outside your projects.', 403, 'FORBIDDEN');
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to reviews outside your projects.'
+        : 'Access denied. You are not a member of this project.';
+    throw new AppError(message, 403, 'FORBIDDEN');
   }
 
   const reviews = await CodeReview.find({ task: taskId })
@@ -202,15 +200,12 @@ export const getReviewById = async (reviewId, user) => {
 
   const project = review.task.project;
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied to reviews outside your projects.', 403, 'FORBIDDEN');
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to reviews outside your projects.'
+        : 'Access denied. You are not a member of this project.';
+    throw new AppError(message, 403, 'FORBIDDEN');
   }
 
   return review;

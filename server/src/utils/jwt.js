@@ -22,6 +22,23 @@ export const verifyToken = (token) => {
 };
 
 /**
+ * Set authentication token in HTTP-only cookie
+ * @param {import('express').Response} res - Express response object
+ * @param {string} token - Signed JWT token
+ */
+export const setTokenCookie = (res, token) => {
+  const cookieExpiresDays = parseInt(process.env.JWT_COOKIE_EXPIRE_DAYS || '7', 10);
+  const cookieOptions = {
+    expires: new Date(Date.now() + cookieExpiresDays * 24 * 60 * 60 * 1000),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  };
+
+  res.cookie('token', token, cookieOptions);
+};
+
+/**
  * Attach token to HTTP-only cookie and send standardized success response
  * @param {import('express').Response} res - Express response object
  * @param {Object} user - User document or sanitized object
@@ -35,16 +52,8 @@ export const sendTokenResponse = (res, user, statusCode = 200, message = 'Authen
     role: user.role
   });
 
-  const cookieExpiresDays = parseInt(process.env.JWT_COOKIE_EXPIRE_DAYS || '7', 10);
-  const cookieOptions = {
-    expires: new Date(Date.now() + cookieExpiresDays * 24 * 60 * 60 * 1000),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-  };
-
   // Set HTTP-only cookie
-  res.cookie('token', token, cookieOptions);
+  setTokenCookie(res, token);
 
   // Return clean user object and token
   const sanitizedUser = typeof user.toJSON === 'function' ? user.toJSON() : { ...user };

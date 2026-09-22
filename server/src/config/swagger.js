@@ -98,6 +98,31 @@ export const swaggerDocument = {
           deadline: { type: 'string', format: 'date-time' },
           createdAt: { type: 'string', format: 'date-time' }
         }
+      },
+      Contribution: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: '65f1a2b3c4d5e6f7a8b9c0d4' },
+          project: { type: 'string', example: '65f1a2b3c4d5e6f7a8b9c0d2' },
+          task: { type: 'string', example: '65f1a2b3c4d5e6f7a8b9c0d3' },
+          developer: { $ref: '#/components/schemas/User' },
+          version: { type: 'integer', example: 1 },
+          files: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                path: { type: 'string', example: 'src/index.js' },
+                content: { type: 'string', example: 'console.log("hello");' },
+                language: { type: 'string', example: 'javascript' }
+              }
+            }
+          },
+          status: { type: 'string', enum: ['DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED'], example: 'IN_REVIEW' },
+          reviewComment: { type: 'string', example: 'Great work, approved.' },
+          submittedAt: { type: 'string', format: 'date-time' },
+          reviewedAt: { type: 'string', format: 'date-time' }
+        }
       }
     }
   },
@@ -109,6 +134,7 @@ export const swaggerDocument = {
     { name: 'Tasks', description: 'Coding Tasks Management' },
     { name: 'Code', description: 'Code Files, Versions & Workspace' },
     { name: 'Reviews', description: 'Code Review Workflow (Approve / Request Changes)' },
+    { name: 'Contributions', description: 'Code Contributions, Approval & Version History' },
     { name: 'Comments', description: 'Code File Line Comments' },
     { name: 'Messages', description: 'Project & Task Chat' },
     { name: 'Notifications', description: 'Real-Time Notifications' },
@@ -662,6 +688,125 @@ export const swaggerDocument = {
           { name: 'taskId', in: 'query', schema: { type: 'string' } }
         ],
         responses: { 200: { description: 'Attachments list' } }
+      }
+    },
+    '/contributions': {
+      post: {
+        tags: ['Contributions'],
+        summary: 'Submit code contribution for review (Developer/User)',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['projectId', 'taskId', 'files'],
+                properties: {
+                  projectId: { type: 'string' },
+                  taskId: { type: 'string' },
+                  files: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['path', 'content'],
+                      properties: {
+                        path: { type: 'string', example: 'src/app.js' },
+                        content: { type: 'string', example: 'console.log("GitSphere");' },
+                        language: { type: 'string', example: 'javascript' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: { 201: { description: 'Contribution submitted' }, 400: { description: 'Validation error' } }
+      },
+      get: {
+        tags: ['Contributions'],
+        summary: 'List contributions for project (filterable by status, taskId, developerId)',
+        parameters: [
+          { name: 'projectId', in: 'query', required: true, schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer' } }
+        ],
+        responses: { 200: { description: 'Contributions list' } }
+      }
+    },
+    '/contributions/pending': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'Get all pending (IN_REVIEW) contributions across Manager projects (Manager only)',
+        responses: { 200: { description: 'Pending contributions' }, 403: { description: 'Forbidden' } }
+      }
+    },
+    '/contributions/{contributionId}': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'Get single contribution details',
+        parameters: [{ name: 'contributionId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Contribution details' }, 404: { description: 'Not found' } }
+      }
+    },
+    '/contributions/{contributionId}/approve': {
+      patch: {
+        tags: ['Contributions'],
+        summary: 'Approve contribution and merge code into project (Manager only)',
+        parameters: [{ name: 'contributionId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Contribution approved' }, 403: { description: 'Forbidden' } }
+      }
+    },
+    '/contributions/{contributionId}/request-changes': {
+      patch: {
+        tags: ['Contributions'],
+        summary: 'Request changes on contribution (Manager only)',
+        parameters: [{ name: 'contributionId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['comment'],
+                properties: { comment: { type: 'string', example: 'Please fix edge cases in error handling.' } }
+              }
+            }
+          }
+        },
+        responses: { 200: { description: 'Changes requested' }, 403: { description: 'Forbidden' } }
+      }
+    },
+    '/projects/{projectId}/code': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'Get latest approved shared code for project',
+        parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Latest project code files and version' } }
+      }
+    },
+    '/projects/{projectId}/versions': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'Get version history for project',
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'page', in: 'query', schema: { type: 'integer' } },
+          { name: 'limit', in: 'query', schema: { type: 'integer' } }
+        ],
+        responses: { 200: { description: 'Version history' } }
+      }
+    },
+    '/projects/{projectId}/versions/{version}': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'Get immutable code snapshot for specific version number',
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'version', in: 'path', required: true, schema: { type: 'integer' } }
+        ],
+        responses: { 200: { description: 'Historical version snapshot' } }
       }
     },
     '/dashboard/manager': {

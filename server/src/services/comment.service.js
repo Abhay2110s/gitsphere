@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import CodeComment from '../models/CodeComment.js';
 import CodeFile from '../models/CodeFile.js';
 import { AppError } from '../utils/response.js';
+import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { notifyCommentAdded } from './notification.service.js';
 import { logActivity } from './activity.service.js';
 
@@ -25,15 +26,12 @@ const verifyFileForComment = async (fileId, user) => {
   const task = file.task;
   const project = task.project;
 
-  if (user.role === 'MANAGER') {
-    if (!project.createdBy.equals(user._id)) {
-      throw new AppError('Access denied to files outside your projects.', 403, 'FORBIDDEN');
-    }
-  } else {
-    const isMember = project.members.some((m) => m.equals(user._id));
-    if (!isMember) {
-      throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
-    }
+  if (!hasProjectAccess(project, user)) {
+    const message =
+      user.role === 'MANAGER'
+        ? 'Access denied to files outside your projects.'
+        : 'Access denied. You are not a member of this project.';
+    throw new AppError(message, 403, 'FORBIDDEN');
   }
 
   return { file, task, project };
