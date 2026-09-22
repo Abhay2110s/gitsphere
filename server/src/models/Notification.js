@@ -16,6 +16,8 @@ const notificationSchema = new mongoose.Schema(
           'TASK_STATUS_CHANGED',
           'CODE_SUBMITTED',
           'CODE_REVIEWED',
+          'CODE_APPROVED',
+          'CHANGES_REQUESTED_NOTIFICATION',
           'COMMENT_ADDED',
           'MEMBER_ADDED',
           'MESSAGE_RECEIVED',

@@ -1,6 +1,4 @@
-import 'dotenv/config';
-
-const BASE_URL = 'http://localhost:5000/api/v1';
+import { BASE_URL } from './testConfig.js';
 
 async function runProjectTests() {
   console.log('=== Starting Phase 3 Projects Test Suite ===\n');

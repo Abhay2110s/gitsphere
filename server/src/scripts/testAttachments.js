@@ -1,6 +1,4 @@
-import 'dotenv/config';
-
-const BASE_URL = 'http://localhost:5000/api/v1';
+import { BASE_URL } from './testConfig.js';
 
 async function runAttachmentTests() {
   console.log('=== Starting Phase 12 File Attachments Test Suite ===\n');

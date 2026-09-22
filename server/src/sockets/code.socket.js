@@ -45,6 +45,59 @@ export const registerCodeHandlers = (io, socket) => {
   const user = socket.user;
 
   /**
+   * 0a. Join Project Room (for real-time contribution sync)
+   * Developers and Managers join project:${projectId} to receive
+   * code:submitted, code:approved, code:changes-requested events.
+   */
+  socket.on('join:project', async (projectId) => {
+    try {
+      if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
+        return socket.emit('code:error', { message: 'Invalid Project ID format' });
+      }
+
+      const Project = (await import('../models/Project.js')).default;
+      const project = await Project.findById(projectId);
+      if (!project) {
+        return socket.emit('code:error', { message: 'Project not found' });
+      }
+
+      // Verify access
+      if (user.role === 'MANAGER') {
+        if (!project.createdBy.equals(user._id)) {
+          return socket.emit('code:error', { message: 'Access denied to this project' });
+        }
+      } else {
+        const isMember = project.members.some((m) => m.equals(user._id));
+        if (!isMember) {
+          return socket.emit('code:error', { message: 'Access denied. You are not a member of this project.' });
+        }
+      }
+
+      const roomName = `project:${projectId}`;
+      socket.join(roomName);
+      socket.emit('project:joined', {
+        projectId,
+        room: roomName,
+        currentVersion: project.currentVersion,
+        files: project.currentFiles || []
+      });
+      console.log(`[Socket] User ${user.name} (${user.role}) joined ${roomName}`);
+    } catch (error) {
+      socket.emit('code:error', { message: error.message });
+    }
+  });
+
+  /**
+   * 0b. Leave Project Room
+   */
+  socket.on('leave:project', (projectId) => {
+    if (!projectId) return;
+    const roomName = `project:${projectId}`;
+    socket.leave(roomName);
+    console.log(`[Socket] User ${user.name} left ${roomName}`);
+  });
+
+  /**
    * 1. Join Task Coding Room (Authenticated & Authorized)
    */
   socket.on('code:join', async ({ taskId, currentFile }) => {

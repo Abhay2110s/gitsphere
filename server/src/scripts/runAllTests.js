@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { SERVER_URL, API_URL } from './testConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,12 +19,13 @@ const testSuites = [
   { name: 'Phase 10: Real-Time Notifications', script: 'testNotifications.js' },
   { name: 'Phase 11: Activity & Audit Logs', script: 'testActivity.js' },
   { name: 'Phase 12: File Attachments', script: 'testAttachments.js' },
-  { name: 'Phase 13: Manager & User Dashboards', script: 'testDashboards.js' }
+  { name: 'Phase 13: Manager & User Dashboards', script: 'testDashboards.js' },
+  { name: 'Phase 14: Manager Approval & Code Sync', script: 'verifyFeatures.js' }
 ];
 
 async function isServerRunning() {
   try {
-    const res = await fetch('http://localhost:5000/api/v1/health');
+    const res = await fetch(`${API_URL}/health`);
     return res.status === 200;
   } catch {
     return false;
@@ -86,9 +88,9 @@ async function main() {
       if (serverProcess) serverProcess.kill();
       process.exit(1);
     }
-    console.log('✓ Test server is healthy and ready on http://localhost:5000\n');
+    console.log(`✓ Test server is healthy and ready on ${SERVER_URL}\n`);
   } else {
-    console.log('✓ Connected to active server on http://localhost:5000\n');
+    console.log(`✓ Connected to active server on ${SERVER_URL}\n`);
   }
 
   const results = [];

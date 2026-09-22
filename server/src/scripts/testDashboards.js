@@ -1,6 +1,4 @@
-import 'dotenv/config';
-
-const BASE_URL = 'http://localhost:5000/api/v1';
+import { BASE_URL } from './testConfig.js';
 
 async function runDashboardTests() {
   console.log('=== Starting Phase 13 Dashboards Test Suite ===\n');

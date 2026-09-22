@@ -1,8 +1,5 @@
-import 'dotenv/config';
 import { io as Client } from 'socket.io-client';
-
-const BASE_URL = 'http://localhost:5000';
-const API_URL = `${BASE_URL}/api/v1`;
+import { SERVER_URL as BASE_URL, API_URL } from './testConfig.js';
 
 async function runSocketTests() {
   console.log('=== Starting Phase 7 Real-Time Collaboration (Socket.IO) Test Suite ===\n');

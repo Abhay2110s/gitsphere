@@ -268,3 +268,35 @@ export const notifyMemberAdded = async ({ project, addedUserId, managerId }) => 
     relatedUser: managerId
   });
 };
+
+/**
+ * Notify all project developers when code is approved
+ */
+export const notifyCodeApproved = async ({ project, contribution, approvedBy }) => {
+  for (const memberId of project.members) {
+    await createNotification({
+      user: memberId,
+      type: 'CODE_APPROVED',
+      title: 'New Approved Code Available',
+      message: `Version ${contribution.version} has been approved by ${approvedBy.name} for project "${project.name}".`,
+      project: project._id || project,
+      task: contribution.task,
+      relatedUser: approvedBy._id
+    });
+  }
+};
+
+/**
+ * Notify the developer when changes are requested on their contribution
+ */
+export const notifyChangesRequested = async ({ task, contribution, manager, developerId, project, comment }) => {
+  await createNotification({
+    user: developerId,
+    type: 'CHANGES_REQUESTED_NOTIFICATION',
+    title: 'Changes Requested',
+    message: `${manager.name} requested changes on your submission for task "${task.title}": "${comment}"`,
+    project: project._id || project,
+    task: task._id || task,
+    relatedUser: manager._id
+  });
+};

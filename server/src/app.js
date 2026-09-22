@@ -22,6 +22,7 @@ import notificationRoutes from './routes/notification.routes.js';
 import activityRoutes from './routes/activity.routes.js';
 import attachmentRoutes from './routes/attachment.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
+import contributionRoutes from './routes/contribution.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -113,6 +114,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/activity', activityRoutes);
 app.use('/api/v1/attachments', attachmentRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/contributions', contributionRoutes);
 
 // Catch-all for undefined routes
 app.use(notFoundHandler);

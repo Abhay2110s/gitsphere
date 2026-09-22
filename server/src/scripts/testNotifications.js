@@ -1,8 +1,5 @@
-import 'dotenv/config';
 import { io as ioClient } from 'socket.io-client';
-
-const BASE_URL = 'http://localhost:5000/api/v1';
-const WS_URL = 'http://localhost:5000';
+import { BASE_URL, WS_URL } from './testConfig.js';
 
 async function runNotificationTests() {
   console.log('=== Starting Phase 10 Notifications Test Suite ===\n');

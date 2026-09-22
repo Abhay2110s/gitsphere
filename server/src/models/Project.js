@@ -44,7 +44,28 @@ const projectSchema = new mongoose.Schema(
       type: String,
       default: '',
       trim: true
-    }
+    },
+    currentVersion: {
+      type: Number,
+      default: 0
+    },
+    currentFiles: [
+      {
+        path: {
+          type: String,
+          required: true
+        },
+        content: {
+          type: String,
+          default: ''
+        },
+        language: {
+          type: String,
+          default: 'javascript'
+        },
+        _id: false
+      }
+    ]
   },
   {
     timestamps: true,

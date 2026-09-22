@@ -12,6 +12,7 @@ import {
 import * as taskController from '../controllers/task.controller.js';
 import { createTaskSchema } from '../validators/task.validator.js';
 import * as messageController from '../controllers/message.controller.js';
+import * as contributionController from '../controllers/contribution.controller.js';
 
 const router = Router();
 
@@ -91,6 +92,27 @@ router.get(
   '/:projectId/messages',
   verifyProjectAccess,
   messageController.getProjectMessages
+);
+
+// 9. Project Code (latest approved version)
+router.get(
+  '/:projectId/code',
+  verifyProjectAccess,
+  contributionController.getProjectCode
+);
+
+// 10. Project Version History
+router.get(
+  '/:projectId/versions',
+  verifyProjectAccess,
+  contributionController.getVersionHistory
+);
+
+// 11. Specific Version by Number
+router.get(
+  '/:projectId/versions/:version',
+  verifyProjectAccess,
+  contributionController.getVersionByNumber
 );
 
 export default router;
