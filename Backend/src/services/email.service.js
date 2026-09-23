@@ -134,3 +134,67 @@ export const sendLoginAlertEmail = async ({ user, loginTime = new Date(), ipAddr
     return null;
   }
 };
+
+/**
+ * Send an OTP verification code email to a user.
+ */
+export const sendOtpEmail = async ({ email, name = 'Developer', otp }) => {
+  try {
+    const transport = getTransporter();
+    const fromAddress = process.env.EMAIL_FROM || '"GitSphere Security" <no-reply@gitsphere.com>';
+    const subject = `🔐 Your GitSphere Verification Code: ${otp}`;
+
+    const textContent = `Hello ${name},\n\n` +
+      `Your 6-digit GitSphere email verification code is: ${otp}\n\n` +
+      `This code is valid for 10 minutes. Please enter it on the verification page to complete your registration.\n\n` +
+      `If you did not request this, please disregard this email.\n\n` +
+      `Best regards,\nGitSphere Team`;
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #111214; color: #FFFFFF; margin: 0; padding: 24px; }
+    .card { max-width: 500px; margin: 0 auto; background: #0B0C0E; border-radius: 16px; border: 1px solid #282A2E; padding: 36px; }
+    .logo { font-size: 22px; font-weight: 700; color: #FFFFFF; text-align: center; margin-bottom: 20px; }
+    .title { font-size: 20px; font-weight: 600; color: #FFFFFF; text-align: center; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: #9699A1; text-align: center; margin-bottom: 28px; }
+    .code-box { background: #151619; border: 1px solid #303238; border-radius: 12px; padding: 18px; text-align: center; font-family: monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #FFFFFF; margin: 24px 0; }
+    .footer { text-align: center; font-size: 12px; color: #5F626A; margin-top: 28px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">⚡ GitSphere</div>
+    <div class="title">Verify your email</div>
+    <div class="subtitle">Use the verification code below to complete your registration.</div>
+    <div class="code-box">${otp}</div>
+    <div class="subtitle" style="font-size: 13px;">This code will expire in <strong>10 minutes</strong>.</div>
+    <div class="footer">
+      If you did not create a GitSphere account, you can safely ignore this email.<br>
+      © GitSphere Collaboration Platform
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const mailOptions = {
+      from: fromAddress,
+      to: email,
+      subject,
+      text: textContent,
+      html: htmlContent
+    };
+
+    const info = await transport.sendMail(mailOptions);
+    console.log(`[Nodemailer] OTP verification code (${otp}) dispatched to ${email}`);
+    return info;
+  } catch (error) {
+    console.error(`[Nodemailer] Error sending OTP verification email to ${email}:`, error.message);
+    return null;
+  }
+};
+

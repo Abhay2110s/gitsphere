@@ -10,7 +10,7 @@ import { sendLoginAlertEmail } from '../services/email.service.js';
  * @access  Public
  */
 export const registerUser = asyncHandler(async (req, res) => {
-  const user = await authService.register(req.body);
+  const { user, otp } = await authService.register(req.body);
 
   const token = generateToken({
     id: user._id,
@@ -24,7 +24,8 @@ export const registerUser = asyncHandler(async (req, res) => {
     id: user._id,
     name: user.name,
     email: user.email,
-    role: user.role
+    role: user.role,
+    isEmailVerified: user.isEmailVerified
   };
 
   return sendSuccess(res, {
@@ -32,9 +33,11 @@ export const registerUser = asyncHandler(async (req, res) => {
     message: 'User registered successfully',
     token,
     user: userPayload,
+    otp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     data: {
       token,
-      user: userPayload
+      user: userPayload,
+      otp: process.env.NODE_ENV !== 'production' ? otp : undefined
     }
   });
 });
@@ -115,7 +118,61 @@ export const logout = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @desc    Verify 6-digit email OTP
+ * @route   POST /api/v1/auth/verify-otp
+ * @access  Public
+ */
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  const user = await authService.verifyOtp({ email, otp });
+
+  const token = generateToken({
+    id: user._id,
+    userId: user._id,
+    role: user.role
+  });
+
+  setTokenCookie(res, token);
+
+  const userPayload = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    isEmailVerified: user.isEmailVerified
+  };
+
+  return sendSuccess(res, {
+    statusCode: 200,
+    message: 'Email verified successfully',
+    token,
+    user: userPayload,
+    data: {
+      token,
+      user: userPayload
+    }
+  });
+});
+
+/**
+ * @desc    Resend 6-digit email OTP
+ * @route   POST /api/v1/auth/resend-otp
+ * @access  Public
+ */
+export const resendOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const result = await authService.resendOtp({ email });
+
+  return sendSuccess(res, {
+    statusCode: 200,
+    message: 'New verification code sent',
+    data: result
+  });
+});
+
 export {
   registerUser as register,
   loginUser as login
 };
+

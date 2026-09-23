@@ -144,18 +144,7 @@ export default function Navbar({ onOpenAuth }) {
           {/* RIGHT: Login & Get Started */}
           <div className="hidden md:flex items-center gap-1.5 sm:gap-2 shrink-0">
             
-            {/* Login button */}
-            <button
-              onClick={() => onOpenAuth('login')}
-              onMouseEnter={() => setHoveredItem('login')}
-              className={`px-3 py-1.5 text-xs sm:text-[13px] font-medium transition-colors cursor-pointer select-none rounded-full ${
-                hoveredItem === 'login' ? 'text-black font-semibold bg-[#F4F4F4]' : 'text-[#444444] hover:text-black'
-              }`}
-            >
-              <span>Login</span>
-            </button>
-
-            {/* Compact Get Started Button */}
+          {/* Compact Get Started Button */}
             <motion.button
               onClick={() => onOpenAuth('signup')}
               onMouseEnter={() => setHoveredItem(null)}
@@ -208,15 +197,7 @@ export default function Navbar({ onOpenAuth }) {
                 );
               })}
               <div className="pt-2 border-t border-[#EEEEEE] flex flex-col gap-2">
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onOpenAuth('login');
-                  }}
-                  className="w-full text-center py-2 text-sm font-semibold border border-black rounded-full text-black hover:bg-[#F1F1F1] transition-colors cursor-pointer"
-                >
-                  Login
-                </button>
+                
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

@@ -47,3 +47,34 @@ export const updateProfileSchema = (req, res, next) => {
   next();
 };
 
+// Validate OTP verification
+export const verifyOtpSchema = (req, res, next) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.status(400).json({
+      message: "Email and 6-digit verification code are required"
+    });
+  }
+
+  if (String(otp).trim().length !== 6) {
+    return res.status(400).json({
+      message: "Verification code must be 6 digits"
+    });
+  }
+
+  next();
+};
+
+// Validate OTP resend
+export const resendOtpSchema = (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({
+      message: "Email address is required"
+    });
+  }
+
+  next();
+};

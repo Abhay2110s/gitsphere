@@ -10,7 +10,7 @@ import HorizontalFeatures from '../components/landing/HorizontalFeatures';
 import HowItWorks from '../components/landing/HowItWorks';
 import FinalCta from '../components/landing/FinalCta';
 
-export default function LandingPage() {
+export default function LandingPage({ onNavigateToRegister, onNavigateToAuth }) {
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'signup' });
 
   useEffect(() => {
@@ -22,6 +22,14 @@ export default function LandingPage() {
   }, []);
 
   const handleOpenAuth = (mode = 'signup') => {
+    if (onNavigateToAuth) {
+      onNavigateToAuth(mode);
+      return;
+    }
+    if (onNavigateToRegister) {
+      onNavigateToRegister(mode);
+      return;
+    }
     setAuthModal({ isOpen: true, mode });
   };
 
