@@ -1,1 +1,181 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #000000;
+    color: #000000;
+    overflow-x: hidden;
+  }
+
+  /* Custom high-contrast monochrome scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #000000;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #666666;
+  }
+}
+
+/* Hexagon geometry utilities */
+.clip-hex {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.clip-hex-horizontal {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+/* Silky smooth floating animations */
+@keyframes floatSmooth {
+  0%, 100% {
+    transform: translate3d(0, 0px, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes floatSmoothReverse {
+  0%, 100% {
+    transform: translate3d(0, 0px, 0);
+  }
+  50% {
+    transform: translate3d(0, 10px, 0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* GPU-accelerated 60/120fps sliding beam animation */
+@keyframes beamSlideGPU {
+  0% {
+    transform: rotate(10deg) translate3d(25vw, 0, 0);
+  }
+  100% {
+    transform: rotate(10deg) translate3d(-130vw, 0, 0);
+  }
+}
+
+/* Hero Typography Smooth Reveal Animations (Pure opacity fade - zero vertical movement on reload) */
+@keyframes heroTextReveal {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes heroFadeUp {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.hero-title-word-1 {
+  display: inline-block;
+  opacity: 0;
+  animation: heroTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.15s;
+  will-change: transform, opacity;
+}
+
+.hero-title-word-2 {
+  display: inline-block;
+  opacity: 0;
+  animation: heroTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.35s;
+  will-change: transform, opacity;
+}
+
+.hero-title-word-3 {
+  display: inline-block;
+  opacity: 0;
+  animation: heroTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.55s;
+  will-change: transform, opacity;
+}
+
+.hero-desc-fade {
+  opacity: 0;
+  animation: heroFadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.75s;
+  will-change: transform, opacity;
+}
+
+.hero-actions-fade {
+  opacity: 0;
+  animation: heroFadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.9s;
+  will-change: transform, opacity;
+}
+
+.hero-badges-fade {
+  opacity: 0;
+  animation: heroFadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 1.05s;
+  will-change: transform, opacity;
+}
+
+.hero-telemetry-fade {
+  opacity: 0;
+  animation: heroFadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.4s;
+  will-change: transform, opacity;
+}
+
+.animate-float-slow {
+  animation: floatSmooth 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-reverse {
+  animation: floatSmoothReverse 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-pulse-subtle {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* Hide scrollbar for carousel while preserving smooth scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
