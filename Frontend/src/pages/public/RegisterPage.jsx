@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { GitSphereLogo, ArrowRightIcon } from '../components/common/Icons';
+import { GitSphereLogo, ArrowRightIcon } from '../../components/common/Icons';
 
 // Eye toggle icons for show/hide password
 function EyeIcon({ className = "w-4 h-4" }) {
@@ -43,7 +43,7 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
   const [registeredUser, setRegisteredUser] = useState(null);
   const otpInputRefs = useRef([]);
 
-  
+
   // Form Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -110,6 +110,10 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
         setRegisteredUser(data.user);
       }
 
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('gitsphere_verification_email', trimmedEmail);
+      }
+
       setTimeout(() => {
         if (onNavigateToOtp) {
           onNavigateToOtp(trimmedEmail);
@@ -122,6 +126,9 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
     } catch (err) {
       if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
         // Fallback for offline/mock dev demo
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('gitsphere_verification_email', trimmedEmail);
+        }
         setRegisteredUser({
           name: trimmedName,
           email: trimmedEmail,
@@ -188,15 +195,15 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col items-center justify-center p-3 sm:p-4 bg-[#090A0C] text-neutral-100 antialiased selection:bg-white selection:text-black overflow-y-auto">
-      
-      {/* ATMOSPHERIC BACKGROUND RADIAL GLOW */}
-      <div 
-        className="absolute inset-0 pointer-events-none overflow-hidden" 
+    <div className="min-h-screen w-full relative flex flex-col items-center justify-center p-3 sm:p-4 bg-black text-neutral-100 antialiased selection:bg-white selection:text-black overflow-y-auto">
+
+      {/* ATMOSPHERIC BACKGROUND RADIAL GLOW - PURE MONOCHROME */}
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden"
         style={{
-          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.12), transparent)'
+          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 255, 255, 0.05), transparent)'
         }}
-        aria-hidden="true" 
+        aria-hidden="true"
       />
 
       {/* TOP BRAND LOGO (HOME LINK) */}
@@ -216,8 +223,8 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
       </div>
 
       {/* MINIMAL SAAS REGISTRATION CARD (PERFECTLY SIZED: 440-460px) */}
-      <div className="relative z-10 w-full max-w-[440px] sm:max-w-[460px] rounded-2xl bg-[#111215]/85 border border-white/[0.08] backdrop-blur-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9),inset_0_1px_0_0_rgba(255,255,255,0.08)] px-5 py-5 sm:px-7 sm:py-6 transition-all">
-        
+      <div className="relative z-10 w-full max-w-[440px] sm:max-w-[460px] rounded-2xl bg-[#0c0c0d]/90 border border-white/[0.08] backdrop-blur-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.95),inset_0_1px_0_0_rgba(255,255,255,0.06)] px-5 py-5 sm:px-7 sm:py-6 transition-all">
+
         {/* CARD HEADER */}
         <div className="text-center mb-3">
           <h1 className="text-xl sm:text-[22px] font-semibold tracking-tight text-white leading-tight">
@@ -248,7 +255,7 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
         {/* STAGE A: REGISTRATION FORM */}
         {flowState === 'form' && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
-            
+
             {/* Row 1: Full Name & Email (2-Column Grid) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="flex flex-col">
@@ -306,11 +313,10 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
                 <button
                   type="button"
                   onClick={() => setRole('USER')}
-                  className={`h-9 px-3 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
-                    role === 'USER'
+                  className={`h-9 px-3 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${role === 'USER'
                       ? 'bg-white/[0.08] border-white/30 text-white shadow-xs'
                       : 'bg-neutral-900/40 border-neutral-800/80 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs text-neutral-400">&lt;/&gt;</span>
@@ -322,11 +328,10 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
                 <button
                   type="button"
                   onClick={() => setRole('MANAGER')}
-                  className={`h-9 px-3 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
-                    role === 'MANAGER'
+                  className={`h-9 px-3 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${role === 'MANAGER'
                       ? 'bg-white/[0.08] border-white/30 text-white shadow-xs'
                       : 'bg-neutral-900/40 border-neutral-800/80 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs text-neutral-400">◈</span>
@@ -398,7 +403,7 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
               </div>
             </div>
 
-            
+
             {/* Row 5: Minimal Terms Checkbox */}
             <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-neutral-400">
               <input

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '../components/common/Navbar';
-import Footer from '../components/common/Footer';
-import Modal from '../components/common/Modal';
+import Navbar from '../../components/common/Navbar';
+import Footer from '../../components/common/Footer';
+import Modal from '../../components/common/Modal';
 
-import Hero from '../components/landing/Hero';
-import DashboardPreview from '../components/landing/DashboardPreview';
-import FeaturesIntro from '../components/landing/FeaturesIntro';
-import HorizontalFeatures from '../components/landing/HorizontalFeatures';
-import HowItWorks from '../components/landing/HowItWorks';
-import FinalCta from '../components/landing/FinalCta';
+import Hero from '../../components/landing/Hero';
+import DashboardPreview from '../../components/landing/DashboardPreview';
+import FeaturesIntro from '../../components/landing/FeaturesIntro';
+import HorizontalFeatures from '../../components/landing/HorizontalFeatures';
+import HowItWorks from '../../components/landing/HowItWorks';
+import FinalCta from '../../components/landing/FinalCta';
 
 export default function LandingPage({ onNavigateToRegister, onNavigateToAuth }) {
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'signup' });

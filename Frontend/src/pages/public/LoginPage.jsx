@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GitSphereLogo, ArrowRightIcon } from '../components/common/Icons';
+import { GitSphereLogo, ArrowRightIcon } from '../../components/common/Icons';
 
 // Eye toggle icons for show/hide password
 function EyeIcon({ className = "w-4 h-4" }) {
@@ -22,7 +22,7 @@ function EyeOffIcon({ className = "w-4 h-4" }) {
   );
 }
 
-export default function LoginPage({ onNavigateToRegister, onNavigateToLanding, onLoginSuccess }) {
+export default function LoginPage({ onNavigateToRegister, onNavigateToForgotPassword, onNavigateToLanding, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -90,13 +90,13 @@ export default function LoginPage({ onNavigateToRegister, onNavigateToLanding, o
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col items-center justify-center p-3 sm:p-4 bg-[#090A0C] text-neutral-100 antialiased selection:bg-white selection:text-black">
+    <div className="min-h-screen w-full relative flex flex-col items-center justify-center p-3 sm:p-4 bg-black text-neutral-100 antialiased selection:bg-white selection:text-black">
       
-      {/* ATMOSPHERIC BACKGROUND RADIAL GLOW */}
+      {/* ATMOSPHERIC BACKGROUND RADIAL GLOW - PURE MONOCHROME */}
       <div 
         className="absolute inset-0 pointer-events-none overflow-hidden" 
         style={{
-          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.12), transparent)'
+          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 255, 255, 0.05), transparent)'
         }}
         aria-hidden="true" 
       />
@@ -118,7 +118,7 @@ export default function LoginPage({ onNavigateToRegister, onNavigateToLanding, o
       </div>
 
       {/* MINIMAL SAAS LOGIN CARD (PERFECTLY SIZED: 440-460px) */}
-      <div className="relative z-10 w-full max-w-[440px] sm:max-w-[460px] rounded-2xl bg-[#111215]/85 border border-white/[0.08] backdrop-blur-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9),inset_0_1px_0_0_rgba(255,255,255,0.08)] px-5 py-5 sm:px-8 sm:py-6 transition-all">
+      <div className="relative z-10 w-full max-w-[440px] sm:max-w-[460px] rounded-2xl bg-[#0c0c0d]/90 border border-white/[0.08] backdrop-blur-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.95),inset_0_1px_0_0_rgba(255,255,255,0.06)] px-5 py-5 sm:px-8 sm:py-6 transition-all">
         
         {/* CARD HEADER */}
         <div className="text-center mb-5">
@@ -184,9 +184,13 @@ export default function LoginPage({ onNavigateToRegister, onNavigateToLanding, o
                 href="#forgot-password"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert('Password reset link will be sent to your email.');
+                  if (onNavigateToForgotPassword) {
+                    onNavigateToForgotPassword();
+                  } else {
+                    window.location.hash = '#forgot-password';
+                  }
                 }}
-                className="text-xs text-neutral-400 hover:text-white transition-colors"
+                className="text-xs text-neutral-400 hover:text-white transition-colors cursor-pointer"
               >
                 Forgot password?
               </a>

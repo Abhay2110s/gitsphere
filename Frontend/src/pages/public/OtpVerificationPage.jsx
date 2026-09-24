@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GitSphereLogo, ArrowRightIcon } from '../components/common/Icons';
+import { GitSphereLogo, ArrowRightIcon } from '../../components/common/Icons';
 
 // Arrow Left Icon
 function ArrowLeftIcon({ className = "w-3.5 h-3.5" }) {
@@ -12,11 +12,32 @@ function ArrowLeftIcon({ className = "w-3.5 h-3.5" }) {
 }
 
 export default function OtpVerificationPage({
-  userEmail = 'abh***@gmail.com',
+  userEmail = '',
   onChangeEmail,
   onVerificationComplete,
   onNavigateToLanding,
 }) {
+  // Resolve effective email from props or local storage
+  const effectiveEmail = React.useMemo(() => {
+    if (userEmail && userEmail.trim()) return userEmail.trim();
+    if (typeof window !== 'undefined') {
+      const stored =
+        localStorage.getItem('gitsphere_verification_email') ||
+        localStorage.getItem('gitsphere_pending_email');
+      if (stored) return stored;
+      const user = localStorage.getItem('gitsphere_user');
+      if (user) {
+        try {
+          const parsed = JSON.parse(user);
+          if (parsed?.email) return parsed.email;
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return '';
+  }, [userEmail]);
+
   // 6 digits state
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -38,9 +59,9 @@ export default function OtpVerificationPage({
 
   // Mask email helper for display if a plain email is passed
   const displayEmail = React.useMemo(() => {
-    if (!userEmail) return 'abh***@gmail.com';
-    if (userEmail.includes('***')) return userEmail;
-    const parts = userEmail.split('@');
+    if (!effectiveEmail) return 'your registered email';
+    if (effectiveEmail.includes('***')) return effectiveEmail;
+    const parts = effectiveEmail.split('@');
     if (parts.length === 2) {
       const user = parts[0];
       const domain = parts[1];
@@ -50,8 +71,8 @@ export default function OtpVerificationPage({
           : `${user.slice(0, 3)}***`;
       return `${maskedUser}@${domain}`;
     }
-    return userEmail;
-  }, [userEmail]);
+    return effectiveEmail;
+  }, [effectiveEmail]);
 
   // Initial focus on first input
   useEffect(() => {
@@ -168,7 +189,7 @@ export default function OtpVerificationPage({
         },
         credentials: 'include',
         body: JSON.stringify({
-          email: userEmail,
+          email: effectiveEmail,
           otp: code,
         }),
       });
@@ -220,7 +241,7 @@ export default function OtpVerificationPage({
         },
         credentials: 'include',
         body: JSON.stringify({
-          email: userEmail,
+          email: effectiveEmail,
         }),
       });
 
@@ -245,13 +266,13 @@ export default function OtpVerificationPage({
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col items-center justify-center p-3 sm:p-4 bg-[#090A0C] text-neutral-100 antialiased selection:bg-white selection:text-black">
+    <div className="min-h-screen w-full relative flex flex-col items-center justify-center p-3 sm:p-4 bg-black text-neutral-100 antialiased selection:bg-white selection:text-black">
       
-      {/* ATMOSPHERIC BACKGROUND RADIAL GLOW */}
+      {/* ATMOSPHERIC BACKGROUND RADIAL GLOW - PURE MONOCHROME */}
       <div 
         className="absolute inset-0 pointer-events-none overflow-hidden" 
         style={{
-          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.12), transparent)'
+          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 255, 255, 0.05), transparent)'
         }}
         aria-hidden="true" 
       />
@@ -274,7 +295,7 @@ export default function OtpVerificationPage({
 
       {/* MINIMAL SAAS OTP CARD (MATCHES LOGIN & REGISTER: 440-460px) */}
       <div
-        className={`relative z-10 w-full max-w-[440px] sm:max-w-[460px] rounded-2xl bg-[#111215]/85 border border-white/[0.08] backdrop-blur-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9),inset_0_1px_0_0_rgba(255,255,255,0.08)] px-5 py-5 sm:px-8 sm:py-6 transition-all ${
+        className={`relative z-10 w-full max-w-[440px] sm:max-w-[460px] rounded-2xl bg-[#0c0c0d]/90 border border-white/[0.08] backdrop-blur-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.95),inset_0_1px_0_0_rgba(255,255,255,0.06)] px-5 py-5 sm:px-8 sm:py-6 transition-all ${
           isShaking ? 'translate-x-[-3px] translate-x-[3px]' : ''
         }`}
         style={
