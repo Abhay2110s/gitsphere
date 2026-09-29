@@ -8,12 +8,28 @@ const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage'
 const ResetPasswordPage = lazy(() => import('./pages/public/ResetPasswordPage'));
 const ManagerApp = lazy(() => import('./pages/Manager/ManagerApp'));
 const DeveloperApp = lazy(() => import('./pages/Developer/DeveloperApp'));
+const WorkspaceApp = lazy(() => import('./pages/Workspace/WorkspaceApp'));
+const NotFoundPage = lazy(() => import('./pages/System/NotFound'));
+const UnauthorizedPage = lazy(() => import('./pages/System/Unauthorized'));
+const ErrorSystemPage = lazy(() => import('./pages/System/Error'));
 
 function App() {
   const getInitialRoute = () => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
+
+      if (hash.startsWith('#workspace') || path.startsWith('/workspace')) {
+        return 'workspace';
+      }
+
+      if (path === '/unauthorized' || hash === '#unauthorized') {
+        return 'unauthorized';
+      }
+
+      if (path === '/error' || hash === '#error') {
+        return 'error';
+      }
 
       if (path.startsWith('/developer') || hash.startsWith('#developer') || path.startsWith('/dev') || hash.startsWith('#dev')) {
         return 'developer';
@@ -47,6 +63,14 @@ function App() {
   };
 
   const [currentRoute, setCurrentRoute] = useState(getInitialRoute);
+  const [workspaceProjectId, setWorkspaceProjectId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      const match = hash.match(/#workspace\/([a-zA-Z0-9]+)/);
+      return match ? match[1] : null;
+    }
+    return null;
+  });
   const [verificationEmail, setVerificationEmail] = useState(() => {
     if (typeof window !== 'undefined') {
       return (
@@ -62,7 +86,15 @@ function App() {
     const handleLocationChange = () => {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (path.startsWith('/developer') || hash.startsWith('#developer') || path.startsWith('/dev') || hash.startsWith('#dev')) {
+      if (hash.startsWith('#workspace') || path.startsWith('/workspace')) {
+        const match = hash.match(/#workspace\/([a-zA-Z0-9]+)/);
+        if (match) setWorkspaceProjectId(match[1]);
+        setCurrentRoute('workspace');
+      } else if (path === '/unauthorized' || hash === '#unauthorized') {
+        setCurrentRoute('unauthorized');
+      } else if (path === '/error' || hash === '#error') {
+        setCurrentRoute('error');
+      } else if (path.startsWith('/developer') || hash.startsWith('#developer') || path.startsWith('/dev') || hash.startsWith('#dev')) {
         setCurrentRoute('developer');
       } else if (path.startsWith('/manager') || hash.startsWith('#manager') || path === '/dashboard' || hash === '#dashboard') {
         setCurrentRoute('manager');
@@ -118,7 +150,9 @@ function App() {
       }
     }
 
-    if (route === 'developer') {
+    if (route === 'workspace') {
+      window.history.pushState({}, '', `#workspace/${email || workspaceProjectId || ''}`);
+    } else if (route === 'developer') {
       window.history.pushState({}, '', '#developer/dashboard');
     } else if (route === 'manager') {
       window.history.pushState({}, '', '#manager/dashboard');
@@ -137,6 +171,39 @@ function App() {
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
+
+  if (currentRoute === 'workspace') {
+    return (
+      <Suspense fallback={null}>
+        <WorkspaceApp
+          projectId={workspaceProjectId}
+          onBack={() => navigateTo('developer')}
+        />
+      </Suspense>
+    );
+  }
+
+  if (currentRoute === 'unauthorized') {
+    return (
+      <Suspense fallback={null}>
+        <UnauthorizedPage
+          onGoDashboard={() => navigateTo('developer')}
+          onGoBack={() => window.history.back()}
+        />
+      </Suspense>
+    );
+  }
+
+  if (currentRoute === 'error') {
+    return (
+      <Suspense fallback={null}>
+        <ErrorSystemPage
+          onRetry={() => window.location.reload()}
+          onGoDashboard={() => navigateTo('landing')}
+        />
+      </Suspense>
+    );
+  }
 
   if (currentRoute === 'developer') {
     return (
