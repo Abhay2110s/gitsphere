@@ -6,12 +6,22 @@ const LoginPage = lazy(() => import('./pages/public/LoginPage'));
 const OtpVerificationPage = lazy(() => import('./pages/public/OtpVerificationPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/public/ResetPasswordPage'));
+const ManagerApp = lazy(() => import('./pages/Manager/ManagerApp'));
+const DeveloperApp = lazy(() => import('./pages/Developer/DeveloperApp'));
 
 function App() {
   const getInitialRoute = () => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
+
+      if (path.startsWith('/developer') || hash.startsWith('#developer') || path.startsWith('/dev') || hash.startsWith('#dev')) {
+        return 'developer';
+      }
+
+      if (path.startsWith('/manager') || hash.startsWith('#manager') || path === '/dashboard' || hash === '#dashboard') {
+        return 'manager';
+      }
 
       if (path === '/register' || path === '/signup' || hash === '#register' || hash === '#signup') {
         return 'register';
@@ -52,7 +62,11 @@ function App() {
     const handleLocationChange = () => {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (
+      if (path.startsWith('/developer') || hash.startsWith('#developer') || path.startsWith('/dev') || hash.startsWith('#dev')) {
+        setCurrentRoute('developer');
+      } else if (path.startsWith('/manager') || hash.startsWith('#manager') || path === '/dashboard' || hash === '#dashboard') {
+        setCurrentRoute('manager');
+      } else if (
         path === '/register' ||
         path === '/signup' ||
         hash === '#register' ||
@@ -104,7 +118,11 @@ function App() {
       }
     }
 
-    if (route === 'register') {
+    if (route === 'developer') {
+      window.history.pushState({}, '', '#developer/dashboard');
+    } else if (route === 'manager') {
+      window.history.pushState({}, '', '#manager/dashboard');
+    } else if (route === 'register') {
       window.history.pushState({}, '', '#register');
     } else if (route === 'login') {
       window.history.pushState({}, '', '#login');
@@ -119,6 +137,22 @@ function App() {
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
+
+  if (currentRoute === 'developer') {
+    return (
+      <Suspense fallback={null}>
+        <DeveloperApp onNavigateToLanding={() => navigateTo('landing')} />
+      </Suspense>
+    );
+  }
+
+  if (currentRoute === 'manager') {
+    return (
+      <Suspense fallback={null}>
+        <ManagerApp onNavigateToLanding={() => navigateTo('landing')} />
+      </Suspense>
+    );
+  }
 
   if (currentRoute === 'reset-password') {
     return (
@@ -158,6 +192,22 @@ function App() {
     );
   }
 
+  const handleAuthSuccess = () => {
+    try {
+      const stored = localStorage.getItem('gitsphere_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u.role === 'USER' || u.role === 'DEVELOPER') {
+          navigateTo('developer');
+          return;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    navigateTo('manager');
+  };
+
   if (currentRoute === 'register') {
     return (
       <Suspense fallback={null}>
@@ -165,7 +215,7 @@ function App() {
           onNavigateToLogin={() => navigateTo('login')}
           onNavigateToOtp={(email) => navigateTo('verify', email)}
           onNavigateToLanding={() => navigateTo('landing')}
-          onLoginSuccess={() => navigateTo('landing')}
+          onLoginSuccess={handleAuthSuccess}
         />
       </Suspense>
     );
@@ -178,7 +228,7 @@ function App() {
           onNavigateToRegister={() => navigateTo('register')}
           onNavigateToForgotPassword={() => navigateTo('forgot-password')}
           onNavigateToLanding={() => navigateTo('landing')}
-          onLoginSuccess={() => navigateTo('landing')}
+          onLoginSuccess={handleAuthSuccess}
         />
       </Suspense>
     );
