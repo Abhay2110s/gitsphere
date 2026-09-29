@@ -11,42 +11,27 @@ function App() {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (
-        path === '/register' ||
-        path === '/signup' ||
-        hash === '#register' ||
-        hash === '#signup'
-      ) {
+
+      if (path === '/register' || path === '/signup' || hash === '#register' || hash === '#signup') {
         return 'register';
       }
       if (path === '/login' || path === '/signin' || hash === '#login' || hash === '#signin') {
         return 'login';
       }
-      if (
-        path === '/forget-password' ||
-        path === '/forget' ||
-        hash === '#forget-password' ||
-        hash === '#forget'
-      ) {
+
+      if (path === '/forget-password' || path === '/forget' || hash === '#forget-password' || hash === '#forget') {
         return 'forgot-password';
       }
-      if (
-        path === '/reset-password' ||
-        path === '/reset' ||
-        hash === '#reset-password' ||
-        hash === '#reset'
-      ) {
+
+      if (path === '/reset-password' || path === '/reset' || hash === '#reset-password' || hash === '#reset') {
         return 'reset-password';
       }
-      if (
-        path === '/verify' ||
-        path === '/otp' ||
-        hash === '#verify' ||
-        hash === '#otp'
-      ) {
+
+      if (path === '/verify' || path === '/otp' || hash === '#verify' || hash === '#otp') {
         return 'verify';
       }
     }
+
     return 'landing';
   };
 
