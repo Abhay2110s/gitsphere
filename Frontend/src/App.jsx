@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import LandingPage from './pages/public/LandingPage';
-import RegisterPage from './pages/public/RegisterPage';
-import LoginPage from './pages/public/LoginPage';
-import OtpVerificationPage from './pages/public/OtpVerificationPage';
-import ForgotPasswordPage from './pages/public/ForgotPasswordPage';
-import ResetPasswordPage from './pages/public/ResetPasswordPage';
+
+const RegisterPage = lazy(() => import('./pages/public/RegisterPage'));
+const LoginPage = lazy(() => import('./pages/public/LoginPage'));
+const OtpVerificationPage = lazy(() => import('./pages/public/OtpVerificationPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/public/ResetPasswordPage'));
 
 function App() {
   const getInitialRoute = () => {
@@ -121,55 +122,65 @@ function App() {
 
   if (currentRoute === 'reset-password') {
     return (
-      <ResetPasswordPage
-        userEmail={verificationEmail}
-        onNavigateToLogin={() => navigateTo('login')}
-        onNavigateToForgotPassword={() => navigateTo('forgot-password')}
-        onNavigateToLanding={() => navigateTo('landing')}
-      />
+      <Suspense fallback={null}>
+        <ResetPasswordPage
+          userEmail={verificationEmail}
+          onNavigateToLogin={() => navigateTo('login')}
+          onNavigateToForgotPassword={() => navigateTo('forgot-password')}
+          onNavigateToLanding={() => navigateTo('landing')}
+        />
+      </Suspense>
     );
   }
 
   if (currentRoute === 'forgot-password') {
     return (
-      <ForgotPasswordPage
-        onNavigateToLogin={() => navigateTo('login')}
-        onNavigateToVerify={(email) => navigateTo('verify', email)}
-        onNavigateToLanding={() => navigateTo('landing')}
-      />
+      <Suspense fallback={null}>
+        <ForgotPasswordPage
+          onNavigateToLogin={() => navigateTo('login')}
+          onNavigateToVerify={(email) => navigateTo('verify', email)}
+          onNavigateToLanding={() => navigateTo('landing')}
+        />
+      </Suspense>
     );
   }
 
   if (currentRoute === 'verify') {
     return (
-      <OtpVerificationPage
-        userEmail={verificationEmail}
-        onChangeEmail={() => navigateTo('register')}
-        onVerificationComplete={() => navigateTo('reset-password')}
-        onNavigateToLanding={() => navigateTo('landing')}
-      />
+      <Suspense fallback={null}>
+        <OtpVerificationPage
+          userEmail={verificationEmail}
+          onChangeEmail={() => navigateTo('register')}
+          onVerificationComplete={() => navigateTo('reset-password')}
+          onNavigateToLanding={() => navigateTo('landing')}
+        />
+      </Suspense>
     );
   }
 
   if (currentRoute === 'register') {
     return (
-      <RegisterPage
-        onNavigateToLogin={() => navigateTo('login')}
-        onNavigateToOtp={(email) => navigateTo('verify', email)}
-        onNavigateToLanding={() => navigateTo('landing')}
-        onLoginSuccess={() => navigateTo('landing')}
-      />
+      <Suspense fallback={null}>
+        <RegisterPage
+          onNavigateToLogin={() => navigateTo('login')}
+          onNavigateToOtp={(email) => navigateTo('verify', email)}
+          onNavigateToLanding={() => navigateTo('landing')}
+          onLoginSuccess={() => navigateTo('landing')}
+        />
+      </Suspense>
     );
   }
 
   if (currentRoute === 'login') {
     return (
-      <LoginPage
-        onNavigateToRegister={() => navigateTo('register')}
-        onNavigateToForgotPassword={() => navigateTo('forgot-password')}
-        onNavigateToLanding={() => navigateTo('landing')}
-        onLoginSuccess={() => navigateTo('landing')}
-      />
+      <Suspense fallback={null}>
+        <LoginPage
+          onNavigateToRegister={() => navigateTo('register')}
+          onNavigateToForgotPassword={() => navigateTo('forgot-password')}
+          onNavigateToLanding={() => navigateTo('landing')}
+          onLoginSuccess={() => navigateTo('landing')}
+        />
+      </Suspense>
     );
   }
 

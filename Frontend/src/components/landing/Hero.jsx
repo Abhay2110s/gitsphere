@@ -22,14 +22,14 @@ export default function Hero({ onOpenAuth, onExplore }) {
         {/* LEFT COLUMN: Hero Typography & Actions */}
         <div className="lg:col-span-7 flex flex-col justify-center text-left">
 
-          {/* Large Bold Headline with Staggered Word Reveal Animations */}
+          {/* Large Bold Headline with Immediate LCP Paint */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[78px] font-black tracking-tight leading-[1.04] text-black">
             <span className="block">
-              <span className="hero-title-word-1 text-black mr-4">Build.</span>
-              <span className="hero-title-word-2 text-black">Review.</span>
+              <span className="text-black mr-4">Build.</span>
+              <span className="text-black">Review.</span>
             </span>
             <span className="block">
-              <span className="hero-title-word-3 text-[#333333] hover:text-black transition-colors duration-300">
+              <span className="text-[#222222] hover:text-black transition-colors duration-300">
                 Collaborate.
               </span>
             </span>

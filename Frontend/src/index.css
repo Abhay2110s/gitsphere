@@ -46,6 +46,12 @@
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
 }
 
+/* Defer layout and rendering of offscreen sections until scrolled into view */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 700px;
+}
+
 /* Silky smooth floating animations */
 @keyframes floatSmooth {
   0%, 100% {
@@ -74,28 +80,7 @@
   }
 }
 
-/* GPU-accelerated 60/120fps sliding beam animation */
-@keyframes beamSlideGPU {
-  0% {
-    transform: rotate(10deg) translate3d(25vw, 0, 0);
-  }
-  100% {
-    transform: rotate(10deg) translate3d(-130vw, 0, 0);
-  }
-}
-
-/* Hero Typography Smooth Reveal Animations (Pure opacity fade - zero vertical movement on reload) */
-@keyframes heroTextReveal {
-  0% {
-    opacity: 0;
-    filter: blur(4px);
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
-  }
-}
-
+/* Hero Typography Smooth Fade Animations */
 @keyframes heroFadeUp {
   0% {
     opacity: 0;
@@ -103,30 +88,6 @@
   100% {
     opacity: 1;
   }
-}
-
-.hero-title-word-1 {
-  display: inline-block;
-  opacity: 0;
-  animation: heroTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.15s;
-  will-change: transform, opacity;
-}
-
-.hero-title-word-2 {
-  display: inline-block;
-  opacity: 0;
-  animation: heroTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.35s;
-  will-change: transform, opacity;
-}
-
-.hero-title-word-3 {
-  display: inline-block;
-  opacity: 0;
-  animation: heroTextReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.55s;
-  will-change: transform, opacity;
 }
 
 .hero-desc-fade {

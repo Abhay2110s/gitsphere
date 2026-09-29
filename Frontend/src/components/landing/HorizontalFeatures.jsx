@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { motion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion';
+import React, { useRef } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { HexagonShape } from '../common/Hexagon';
 import {
   ProjectManagementCard,
@@ -11,7 +11,6 @@ import {
 
 export default function HorizontalFeatures() {
   const containerRef = useRef(null);
-  const [activeStep, setActiveStep] = useState(0);
 
   // Hook into vertical scroll progress through the 500vh container
   const { scrollYProgress } = useScroll({
@@ -24,23 +23,6 @@ export default function HorizontalFeatures() {
 
   // Parallax translation for subtle background floating hexagons
   const bgX = useTransform(scrollYProgress, [0, 1], ['0%', '-35%']);
-
-  // Keep track of current slide index (0 to 4) for the HUD counter
-  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
-    const idx = Math.min(4, Math.max(0, Math.round(latest * 4)));
-    setActiveStep(idx);
-  });
-
-
-  const scrollToCard = (index) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const containerTop = rect.top + scrollTop;
-    const totalScrollable = containerRef.current.offsetHeight - window.innerHeight;
-    const targetScroll = containerTop + (index / 4) * totalScrollable;
-    window.scrollTo({ top: targetScroll, behavior: 'smooth' });
-  };
 
   return (
     <section

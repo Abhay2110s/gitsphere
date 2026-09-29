@@ -1,84 +1,35 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 
 /**
- * Ultra-smooth, GPU-accelerated atmospheric sliding beam animation
- * adhering strictly to GitSphere's pure black, white, and grayscale color direction.
+ * High-performance, GPU-accelerated atmospheric ambient light for GitSphere Hero
+ * Uses zero-repaint CSS gradients instead of heavy multi-layered box-shadow blurs.
  */
 export default function MonochromeRays() {
-  const length = 25;
-  const animationTime = 48; // seconds for silky smooth glide
-
-  // Softer grayscale palettes for buttery smooth blending
-  const colorPermutations = [
-    ['rgba(15, 15, 15, 0.35)', 'rgba(70, 70, 70, 0.28)', 'rgba(160, 160, 160, 0.25)'],
-    ['rgba(15, 15, 15, 0.35)', 'rgba(160, 160, 160, 0.25)', 'rgba(70, 70, 70, 0.28)'],
-    ['rgba(160, 160, 160, 0.25)', 'rgba(15, 15, 15, 0.35)', 'rgba(70, 70, 70, 0.28)'],
-    ['rgba(160, 160, 160, 0.25)', 'rgba(70, 70, 70, 0.28)', 'rgba(15, 15, 15, 0.35)'],
-    ['rgba(70, 70, 70, 0.28)', 'rgba(160, 160, 160, 0.25)', 'rgba(15, 15, 15, 0.35)'],
-    ['rgba(70, 70, 70, 0.28)', 'rgba(15, 15, 15, 0.35)', 'rgba(160, 160, 160, 0.25)'],
-  ];
-
-  const beams = useMemo(() => {
-    return Array.from({ length }, (_, i) => {
-      const idx = i + 1;
-      const palette = colorPermutations[i % colorPermutations.length];
-      const duration = animationTime - (animationTime / length / 2) * idx;
-      const delay = -((idx / length) * animationTime);
-
-      const boxShadow = `
-        -140px 0 90px 45px #ffffff,
-        -55px 0 60px 30px ${palette[0]},
-        0 0 60px 30px ${palette[1]},
-        55px 0 60px 30px ${palette[2]},
-        140px 0 90px 45px #ffffff
-      `;
-
-      return {
-        id: idx,
-        style: {
-          height: '130%',
-          width: 0,
-          top: '-15%',
-          right: 0,
-          position: 'absolute',
-          transformOrigin: 'top right',
-          boxShadow,
-          animation: `${duration}s linear infinite beamSlideGPU`,
-          animationDelay: `${delay}s`,
-          willChange: 'transform',
-        },
-      };
-    });
-  }, []);
-
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      {/* 25 Sliding Monochrome Light Beams (GPU accelerated) */}
-      {beams.map((beam) => (
-        <div key={beam.id} style={beam.style} />
-      ))}
-
-      {/* Horizontal Softening Vignette (.h) */}
-      <div
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
+      {/* Primary soft atmospheric monochrome spotlight */}
+      <div 
+        className="absolute -top-[25%] -right-[10%] w-[55vw] h-[55vw] max-w-[900px] max-h-[900px] rounded-full opacity-60 pointer-events-none"
         style={{
-          boxShadow: '0 0 50vh 40vh white',
-          width: '100%',
-          height: 0,
-          bottom: 0,
-          left: 0,
-          position: 'absolute',
+          background: 'radial-gradient(circle, rgba(230, 230, 230, 0.45) 0%, rgba(245, 245, 245, 0.2) 40%, rgba(255, 255, 255, 0) 70%)',
+          willChange: 'transform',
         }}
       />
 
-      {/* Vertical Softening Vignette (.v) */}
+      {/* Subtle angled ambient architectural light beam */}
       <div
+        className="absolute -top-[35%] -right-[15%] w-[85vw] h-[130vh] opacity-30 pointer-events-none"
         style={{
-          boxShadow: '0 0 35vw 25vw white',
-          width: 0,
-          height: '100%',
-          bottom: 0,
-          left: 0,
-          position: 'absolute',
+          background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.02) 30%, transparent 65%)',
+          transform: 'rotate(-12deg)',
+        }}
+      />
+
+      {/* Secondary subtle ambient glow */}
+      <div 
+        className="absolute bottom-[-10%] left-[5%] w-[40vw] h-[40vw] max-w-[600px] max-h-[600px] rounded-full opacity-40 pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle, rgba(240, 240, 240, 0.5) 0%, rgba(255, 255, 255, 0) 70%)',
         }}
       />
     </div>

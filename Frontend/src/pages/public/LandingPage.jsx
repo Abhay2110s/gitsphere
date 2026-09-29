@@ -18,7 +18,9 @@ export default function LandingPage({ onNavigateToRegister, onNavigateToAuth }) 
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
     }
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (window.scrollY > 0) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
   }, []);
 
   const handleOpenAuth = (mode = 'signup') => {
@@ -68,26 +70,36 @@ export default function LandingPage({ onNavigateToRegister, onNavigateToAuth }) 
         />
 
         {/* 3. PRODUCT / DASHBOARD PREVIEW (Landing) */}
-        <DashboardPreview />
+        <div className="content-visibility-auto">
+          <DashboardPreview />
+        </div>
 
         {/* 4. FEATURES INTRODUCTION (Landing) */}
-        <FeaturesIntro />
+        <div className="content-visibility-auto">
+          <FeaturesIntro />
+        </div>
 
         {/* 5. FULL-SCREEN SCROLL-DRIVEN HORIZONTAL FEATURES (Cards 01 to 05) */}
         <HorizontalFeatures />
 
         {/* 6. HOW GITSPHERE WORKS (Landing) - Follows directly after Feature 05 */}
-        <HowItWorks />
+        <div className="content-visibility-auto">
+          <HowItWorks />
+        </div>
 
         {/* 8. FINAL CTA (Landing) */}
-        <FinalCta
-          onOpenAuth={handleOpenAuth}
-          onLearnMore={handleLearnMore}
-        />
+        <div className="content-visibility-auto">
+          <FinalCta
+            onOpenAuth={handleOpenAuth}
+            onLearnMore={handleLearnMore}
+          />
+        </div>
       </main>
 
       {/* 9. FOOTER (Common) */}
-      <Footer />
+      <div className="content-visibility-auto">
+        <Footer />
+      </div>
 
       {/* Interactive Modal for Auth / Demo (Common) */}
       <Modal
