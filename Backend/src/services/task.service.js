@@ -22,9 +22,34 @@ export const createTask = async (managerId, projectId, taskData) => {
     throw new AppError('You can only create tasks for projects you created.', 403, 'FORBIDDEN');
   }
 
+  const cleanData = { ...taskData };
+
+  // Normalize priority
+  if (cleanData.priority) {
+    const p = String(cleanData.priority).toUpperCase();
+    if (p === 'CRITICAL') cleanData.priority = 'URGENT';
+    else if (['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(p)) cleanData.priority = p;
+    else cleanData.priority = 'MEDIUM';
+  } else {
+    cleanData.priority = 'MEDIUM';
+  }
+
+  // Normalize deadline
+  if (cleanData.dueDate && !cleanData.deadline) {
+    cleanData.deadline = cleanData.dueDate;
+  }
+  if (!cleanData.deadline || cleanData.deadline === '') {
+    cleanData.deadline = null;
+  }
+
+  // Normalize assignedTo
+  if (!cleanData.assignedTo || cleanData.assignedTo === '' || cleanData.assignedTo === 'none') {
+    cleanData.assignedTo = null;
+  }
+
   // If assignedTo is provided, validate assignee
-  if (taskData.assignedTo) {
-    const isMember = project.members.some((memberId) => memberId.equals(taskData.assignedTo));
+  if (cleanData.assignedTo) {
+    const isMember = project.members.some((memberId) => memberId.equals(cleanData.assignedTo));
     if (!isMember) {
       throw new AppError(
         'Task can only be assigned to a User who is enrolled in this project.',
@@ -33,14 +58,14 @@ export const createTask = async (managerId, projectId, taskData) => {
       );
     }
 
-    const assignedUser = await User.findById(taskData.assignedTo);
+    const assignedUser = await User.findById(cleanData.assignedTo);
     if (!assignedUser || assignedUser.role !== 'USER') {
       throw new AppError('Task can only be assigned to a standard User.', 400, 'INVALID_ASSIGNEE_ROLE');
     }
   }
 
   const task = await Task.create({
-    ...taskData,
+    ...cleanData,
     project: projectId,
     createdBy: managerId
   });
@@ -51,10 +76,10 @@ export const createTask = async (managerId, projectId, taskData) => {
     { path: 'project', select: 'name status' }
   ]).then(async (populatedTask) => {
     // Notify assigned user if task was assigned at creation
-    if (taskData.assignedTo) {
+    if (cleanData.assignedTo) {
       notifyTaskAssigned({
         task: populatedTask,
-        assignedUserId: taskData.assignedTo,
+        assignedUserId: cleanData.assignedTo,
         managerId,
         project
       }).catch(() => {}); // Fire-and-forget; don't fail task creation on notification error
@@ -165,21 +190,30 @@ export const getTaskById = async (taskId, user) => {
  */
 export const getMyTasks = async (user, queryParams = {}) => {
   const page = parseInt(queryParams.page, 10) || 1;
-  const limit = parseInt(queryParams.limit, 10) || 20;
+  const limit = parseInt(queryParams.limit, 10) || 50;
   const skip = (page - 1) * limit;
 
-  const query = { assignedTo: user._id };
+  let query = {};
+  if (user.role === 'MANAGER') {
+    query = { createdBy: user._id };
+  } else {
+    query = { assignedTo: user._id };
+  }
 
+  if (queryParams.projectId) {
+    query.project = queryParams.projectId;
+  }
   if (queryParams.status) {
-    query.status = queryParams.status;
+    query.status = String(queryParams.status).toUpperCase();
   }
   if (queryParams.priority) {
-    query.priority = queryParams.priority;
+    query.priority = String(queryParams.priority).toUpperCase();
   }
 
   const [tasks, total] = await Promise.all([
     Task.find(query)
       .populate('createdBy', 'name email avatar')
+      .populate('assignedTo', 'name email avatar')
       .populate('project', 'name status deadline')
       .sort({ deadline: 1, createdAt: -1 })
       .skip(skip)

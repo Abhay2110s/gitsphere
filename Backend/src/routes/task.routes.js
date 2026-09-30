@@ -19,7 +19,8 @@ const router = Router();
 // Apply authentication to all task routes
 router.use(authenticate);
 
-// 1. Get current user's assigned tasks
+// 1. Get current user's accessible tasks
+router.get('/', taskController.getMyTasks);
 router.get('/my-tasks', taskController.getMyTasks);
 
 // 2. Get specific task details

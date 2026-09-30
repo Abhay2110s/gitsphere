@@ -1,10 +1,22 @@
 import { api } from './client';
 
 export const tasksApi = {
-  // Get current logged-in developer's assigned tasks
-  getMyTasks: async () => {
-    const res = await api.get('/tasks/my-tasks');
-    return res.data;
+  // Get accessible tasks (manager sees created, developer sees assigned)
+  getMyTasks: async (params) => {
+    const res = await api.get('/tasks/my-tasks', { params });
+    return res?.data ?? res;
+  },
+
+  // Get all tasks with query filters
+  getTasks: async (params) => {
+    const res = await api.get('/tasks', { params });
+    return res?.data ?? res;
+  },
+
+  // Create a new task within a project (Manager only)
+  createTask: async (projectId, taskData) => {
+    const res = await api.post(`/projects/${projectId}/tasks`, taskData);
+    return res?.data ?? res;
   },
 
   // Get specific task details

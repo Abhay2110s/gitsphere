@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import CodeMirrorEditor from '../../components/common/CodeMirrorEditor';
+import {
+  SUPPORTED_LANGUAGES,
+  detectLanguage,
+} from '../../utils/editorLanguages';
 import { useProjects } from '../../hooks/useProjects';
 import { useTasks } from '../../hooks/useTasks';
 import { tasksApi } from '../../api/tasks.api';
@@ -13,7 +17,48 @@ import {
   CheckIcon,
   GitCommitIcon,
   CloseIcon,
+  FolderIcon,
+  GitBranchIcon,
+  SaveIcon,
+  ChevronRightIcon,
 } from '../../components/common/Icons';
+
+function getFileLanguageBadge(filename = '') {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'rs':
+      return { label: 'RS', color: 'text-amber-500 bg-amber-500/10 border-amber-500/30' };
+    case 'go':
+      return { label: 'GO', color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30' };
+    case 'py':
+      return { label: 'PY', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30' };
+    case 'js':
+    case 'jsx':
+      return { label: 'JS', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' };
+    case 'ts':
+    case 'tsx':
+      return { label: 'TS', color: 'text-blue-400 bg-blue-400/10 border-blue-400/30' };
+    case 'sql':
+      return { label: 'SQL', color: 'text-purple-400 bg-purple-400/10 border-purple-400/30' };
+    case 'php':
+      return { label: 'PHP', color: 'text-indigo-400 bg-indigo-400/10 border-indigo-400/30' };
+    case 'html':
+      return { label: 'HTML', color: 'text-orange-400 bg-orange-400/10 border-orange-400/30' };
+    case 'css':
+      return { label: 'CSS', color: 'text-sky-400 bg-sky-400/10 border-sky-400/30' };
+    case 'json':
+      return { label: '{ }', color: 'text-yellow-300 bg-yellow-300/10 border-yellow-300/30' };
+    case 'xml':
+      return { label: 'XML', color: 'text-emerald-300 bg-emerald-300/10 border-emerald-300/30' };
+    case 'yaml':
+    case 'yml':
+      return { label: 'YML', color: 'text-pink-400 bg-pink-400/10 border-pink-400/30' };
+    case 'md':
+      return { label: 'MD', color: 'text-zinc-300 bg-zinc-300/10 border-zinc-300/30' };
+    default:
+      return { label: 'TXT', color: 'text-zinc-400 bg-zinc-400/10 border-zinc-400/30' };
+  }
+}
 
 export default function DeveloperCodeEditor({
   initialProject = null,
@@ -33,6 +78,7 @@ export default function DeveloperCodeEditor({
 
   const effectiveProjectId =
     selectedProjectId || (projects.length > 0 ? projects[0]._id || projects[0].id : '');
+
   const effectiveTaskId =
     selectedTaskId ||
     (tasks.length > 0
@@ -42,9 +88,14 @@ export default function DeveloperCodeEditor({
       : '');
 
   const [files, setFiles] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(initialFile || null);
-  const [editorCode, setEditorCode] = useState('');
-  const [initialCode, setInitialCode] = useState('');
+  const [openTabs, setOpenTabs] = useState(() => (initialFile ? [initialFile] : []));
+  const [activeFileId, setActiveFileId] = useState(() => (initialFile?._id || initialFile?.id || initialFile?.name || null));
+  const [fileContents, setFileContents] = useState({});
+  const [initialContents, setInitialContents] = useState({});
+  const [activeLanguage, setActiveLanguage] = useState(() => (initialFile?.language || 'javascript'));
+  const [cursor, setCursor] = useState({ line: 1, col: 1 });
+  const [activeActivity, setActiveActivity] = useState('explorer');
+
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -61,12 +112,68 @@ export default function DeveloperCodeEditor({
   const [submittingContribution, setSubmittingContribution] = useState(false);
   const [contributionSuccess, setContributionSuccess] = useState(null);
 
+  // Active file resolution
+  const activeFile = useMemo(() => {
+    return files.find((f) => (f._id || f.id || f.name) === activeFileId) || null;
+  }, [files, activeFileId]);
+
+  const editorCode = activeFileId ? (fileContents[activeFileId] ?? activeFile?.content ?? '') : '';
+  const initialCode = activeFileId ? (initialContents[activeFileId] ?? activeFile?.content ?? '') : '';
+  const isDirty = editorCode !== initialCode;
+
+  // Open file in tabs
+  const handleSelectFile = useCallback((file) => {
+    if (!file || file.type === 'folder') return;
+    const fileId = file._id || file.id || file.name;
+
+    setOpenTabs((prev) => {
+      if (!prev.some((f) => (f._id || f.id || f.name) === fileId)) {
+        return [...prev, file];
+      }
+      return prev;
+    });
+
+    setActiveFileId(fileId);
+    setActiveLanguage(file.language || detectLanguage(file.name || file.path));
+
+    setFileContents((prev) => {
+      if (prev[fileId] === undefined) {
+        return { ...prev, [fileId]: file.content || '' };
+      }
+      return prev;
+    });
+
+    setInitialContents((prev) => {
+      if (prev[fileId] === undefined) {
+        return { ...prev, [fileId]: file.content || '' };
+      }
+      return prev;
+    });
+  }, []);
+
+  // Close tab
+  const handleCloseTab = (e, fileIdToClose) => {
+    e.stopPropagation();
+    const updatedTabs = openTabs.filter((f) => (f._id || f.id || f.name) !== fileIdToClose);
+    setOpenTabs(updatedTabs);
+
+    if (activeFileId === fileIdToClose) {
+      if (updatedTabs.length > 0) {
+        const next = updatedTabs[updatedTabs.length - 1];
+        const nextId = next._id || next.id || next.name;
+        setActiveFileId(nextId);
+        setActiveLanguage(next.language || detectLanguage(next.name || next.path));
+      } else {
+        setActiveFileId(null);
+      }
+    }
+  };
+
   // Fetch files when task changes
   useEffect(() => {
-    if (!effectiveTaskId) {
-      return;
-    }
+    if (!effectiveTaskId) return;
     let ignore = false;
+
     tasksApi
       .getTaskFiles(effectiveTaskId)
       .then((res) => {
@@ -74,9 +181,10 @@ export default function DeveloperCodeEditor({
           const list = Array.isArray(res) ? res : res?.files || [];
           setFiles(list);
           if (list.length > 0) {
-            setSelectedFile(list[0]);
-            setEditorCode(list[0].content || '');
-            setInitialCode(list[0].content || '');
+            handleSelectFile(list[0]);
+          } else {
+            setOpenTabs([]);
+            setActiveFileId(null);
           }
           setLoadingFiles(false);
         }
@@ -85,6 +193,8 @@ export default function DeveloperCodeEditor({
         if (!ignore) {
           setError(err);
           setFiles([]);
+          setOpenTabs([]);
+          setActiveFileId(null);
           setLoadingFiles(false);
         }
       });
@@ -92,40 +202,41 @@ export default function DeveloperCodeEditor({
     return () => {
       ignore = true;
     };
-  }, [effectiveTaskId]);
+  }, [effectiveTaskId, handleSelectFile]);
 
-  const handleSelectFile = (file) => {
-    setSelectedFile(file);
-    setEditorCode(file.content || '');
-    setInitialCode(file.content || '');
+  // Handle code change
+  const handleCodeChange = (newVal) => {
+    if (!activeFileId) return;
+    setFileContents((prev) => ({ ...prev, [activeFileId]: newVal }));
   };
 
   // Save current file
   const handleSaveFile = async () => {
-    if (!selectedFile) return;
+    if (!activeFile) return;
     try {
       setSaving(true);
       setError(null);
-      const fileId = selectedFile._id || selectedFile.id;
+      const fileId = activeFile._id || activeFile.id;
+
       if (fileId) {
         await workspaceApi.updateFile(fileId, { content: editorCode });
-      } else if (selectedTaskId) {
-        await tasksApi.createTaskFile(selectedTaskId, {
-          path: selectedFile.path || selectedFile.name,
+      } else if (effectiveTaskId) {
+        await tasksApi.createTaskFile(effectiveTaskId, {
+          path: activeFile.path || activeFile.name,
           content: editorCode,
-          language: selectedFile.language || 'javascript',
+          language: activeLanguage,
         });
       }
 
-      setInitialCode(editorCode);
+      setInitialContents((prev) => ({ ...prev, [activeFileId]: editorCode }));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
 
       // Update in files list
       setFiles((prev) =>
         prev.map((f) =>
-          (f._id && f._id === fileId) || f.name === selectedFile.name
-            ? { ...f, content: editorCode }
+          (f._id && f._id === fileId) || f.name === activeFile.name
+            ? { ...f, content: editorCode, language: activeLanguage }
             : f
         )
       );
@@ -138,26 +249,26 @@ export default function DeveloperCodeEditor({
 
   // Reset editor code to saved state
   const handleResetCode = () => {
-    setEditorCode(initialCode);
+    if (!activeFileId) return;
+    setFileContents((prev) => ({ ...prev, [activeFileId]: initialCode }));
   };
 
   // Create new file
   const handleCreateFile = async (e) => {
     e.preventDefault();
-    if (!newFilePath.trim() || !selectedTaskId) return;
+    if (!newFilePath.trim() || !effectiveTaskId) return;
 
     try {
       setSaving(true);
-      const newFile = await tasksApi.createTaskFile(selectedTaskId, {
+      const computedLang = newFileLang || detectLanguage(newFilePath.trim());
+      const newFile = await tasksApi.createTaskFile(effectiveTaskId, {
         path: newFilePath.trim(),
         content: `// ${newFilePath.trim()}\n`,
-        language: newFileLang,
+        language: computedLang,
       });
 
       setFiles((prev) => [...prev, newFile]);
-      setSelectedFile(newFile);
-      setEditorCode(newFile.content);
-      setInitialCode(newFile.content);
+      handleSelectFile(newFile);
       setShowNewFileModal(false);
       setNewFilePath('');
     } catch (err) {
@@ -167,28 +278,42 @@ export default function DeveloperCodeEditor({
     }
   };
 
+  // Auto-update language selector when filename input changes in modal
+  const handleNewFilePathChange = (e) => {
+    const val = e.target.value;
+    setNewFilePath(val);
+    const detected = detectLanguage(val);
+    if (detected) {
+      setNewFileLang(detected);
+    }
+  };
+
   // Submit contribution to backend
   const handleSubmitContribution = async (e) => {
     e.preventDefault();
-    if (!selectedProjectId || !selectedTaskId || files.length === 0) return;
+    if (!effectiveProjectId || !effectiveTaskId || files.length === 0) return;
 
     try {
       setSubmittingContribution(true);
       setError(null);
 
       // Save currently active file first if modified
-      if (selectedFile && editorCode !== initialCode) {
+      if (activeFile && isDirty) {
         await handleSaveFile();
       }
 
       const payload = {
-        projectId: selectedProjectId,
-        taskId: selectedTaskId,
-        files: files.map((f) => ({
-          path: f.path || f.name,
-          content: (selectedFile && (selectedFile._id === f._id || selectedFile.name === f.name)) ? editorCode : (f.content || ''),
-          language: f.language || 'javascript',
-        })),
+        projectId: effectiveProjectId,
+        taskId: effectiveTaskId,
+        files: files.map((f) => {
+          const fid = f._id || f.id || f.name;
+          const currentContent = fileContents[fid] !== undefined ? fileContents[fid] : f.content || '';
+          return {
+            path: f.path || f.name,
+            content: currentContent,
+            language: f.language || detectLanguage(f.name || f.path),
+          };
+        }),
         notes: contributionNotes.trim(),
       };
 
@@ -206,13 +331,14 @@ export default function DeveloperCodeEditor({
     }
   };
 
-  const isDirty = editorCode !== initialCode;
+  const currentProjectName = projects.find((p) => (p._id || p.id) === effectiveProjectId)?.name || 'Project';
+  const currentTaskTitle = tasks.find((t) => (t._id || t.id) === effectiveTaskId)?.title || 'Task Workspace';
 
   return (
-    <div className="space-y-6 animate-fade-in flex flex-col h-[calc(100vh-140px)] min-h-[600px]">
+    <div className="space-y-4 animate-fade-in flex flex-col h-[calc(100vh-140px)] min-h-[640px]">
       <PageHeader
         title="GitSphere Code Editor"
-        description="Collaborative code workspace with real-time editing, syntax highlighting, and contribution review lifecycle."
+        description="VS Code-powered collaborative editor with multi-language support, syntax highlighting, and review lifecycle."
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -226,7 +352,7 @@ export default function DeveloperCodeEditor({
 
             <button
               onClick={handleSaveFile}
-              disabled={!selectedFile || saving || !isDirty}
+              disabled={!activeFile || saving || !isDirty}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 saveSuccess
                   ? 'bg-emerald-600 text-white'
@@ -243,7 +369,10 @@ export default function DeveloperCodeEditor({
               ) : saving ? (
                 <span>Saving...</span>
               ) : (
-                <span>Save File</span>
+                <>
+                  <SaveIcon className="w-3.5 h-3.5" />
+                  <span>Save (Ctrl+S)</span>
+                </>
               )}
             </button>
 
@@ -261,7 +390,7 @@ export default function DeveloperCodeEditor({
 
       {/* Contribution Success Banner */}
       {contributionSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/50 flex items-center justify-between text-xs text-emerald-400 font-mono animate-fade-in">
+        <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/50 flex items-center justify-between text-xs text-emerald-400 font-mono animate-fade-in">
           <div className="flex items-center gap-2">
             <CheckIcon className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>Contribution submitted successfully! Assigned manager will review your changes.</span>
@@ -275,18 +404,18 @@ export default function DeveloperCodeEditor({
         </div>
       )}
 
-      {/* Selectors Bar */}
-      <div className="p-3 rounded-xl border border-[#222222] bg-[#0A0A0A] flex flex-wrap items-center gap-3">
+      {/* Top Project & Task Selector Strip */}
+      <div className="p-2.5 rounded-xl border border-[#2B2B2B] bg-[#141414] flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 text-xs font-mono">
-          <span className="text-[#666666]">Repo:</span>
+          <span className="text-[#888888]">Repository:</span>
           <select
             value={effectiveProjectId}
             onChange={(e) => {
               setSelectedProjectId(e.target.value);
               setSelectedTaskId('');
-              setSelectedFile(null);
+              setActiveFileId(null);
             }}
-            className="bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded-lg px-2.5 py-1 outline-none cursor-pointer"
+            className="bg-[#1C1C1C] border border-[#333333] text-white text-xs font-mono rounded-lg px-2.5 py-1 outline-none cursor-pointer"
           >
             {projects.length === 0 ? (
               <option value="">No projects</option>
@@ -301,14 +430,14 @@ export default function DeveloperCodeEditor({
         </div>
 
         <div className="flex items-center gap-2 text-xs font-mono">
-          <span className="text-[#666666]">Task:</span>
+          <span className="text-[#888888]">Task:</span>
           <select
             value={effectiveTaskId}
             onChange={(e) => {
               setSelectedTaskId(e.target.value);
-              setSelectedFile(null);
+              setActiveFileId(null);
             }}
-            className="bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded-lg px-2.5 py-1 outline-none cursor-pointer"
+            className="bg-[#1C1C1C] border border-[#333333] text-white text-xs font-mono rounded-lg px-2.5 py-1 outline-none cursor-pointer max-w-[240px] truncate"
           >
             {tasks.length === 0 ? (
               <option value="">No tasks</option>
@@ -324,7 +453,7 @@ export default function DeveloperCodeEditor({
 
         {isDirty && (
           <span className="text-[11px] font-mono text-amber-400 ml-auto flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
             Unsaved changes
           </span>
         )}
@@ -338,113 +467,253 @@ export default function DeveloperCodeEditor({
         />
       )}
 
-      {/* Editor Body */}
-      <div className="flex-1 flex border border-[#222222] rounded-2xl overflow-hidden bg-[#0A0A0A]">
-        {/* Left Sidebar: File Tree */}
-        <div className="w-56 border-r border-[#222222] bg-[#070707] flex flex-col shrink-0">
-          <div className="p-3 border-b border-[#1C1C1C] flex items-center justify-between">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#666666]">
-              Files ({files.length})
-            </span>
+      {/* VS Code Main Frame */}
+      <div className="flex-1 flex flex-col border border-[#2B2B2B] rounded-xl overflow-hidden bg-[#1E1E1E] shadow-2xl min-h-0">
+        <div className="flex flex-1 min-h-0">
+          {/* VS Code Activity Bar (Far Left Strip) */}
+          <div className="w-12 bg-[#333333]/30 border-r border-[#2B2B2B] flex flex-col items-center py-2 select-none shrink-0 z-10">
             <button
-              onClick={() => setShowNewFileModal(true)}
-              className="p-1 text-[#888888] hover:text-white transition-colors cursor-pointer"
-              title="Create new file"
+              onClick={() => setActiveActivity(activeActivity === 'explorer' ? null : 'explorer')}
+              title="Explorer"
+              className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors cursor-pointer relative ${
+                activeActivity === 'explorer' ? 'text-white' : 'text-[#858585] hover:text-white'
+              }`}
             >
-              <PlusIcon className="w-3.5 h-3.5" />
+              {activeActivity === 'explorer' && (
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-[#007ACC] rounded-r" />
+              )}
+              <FolderIcon className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={() => setActiveActivity(activeActivity === 'git' ? null : 'git')}
+              title="Source Control"
+              className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors cursor-pointer relative ${
+                activeActivity === 'git' ? 'text-white' : 'text-[#858585] hover:text-white'
+              }`}
+            >
+              {activeActivity === 'git' && (
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-[#007ACC] rounded-r" />
+              )}
+              <GitBranchIcon className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {loadingFiles ? (
-              <div className="p-4 text-center">
-                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-[11px] font-mono text-[#666666]">Loading files...</p>
+          {/* VS Code Explorer Sidebar */}
+          {activeActivity && (
+            <div className="w-56 bg-[#252526] border-r border-[#2B2B2B] flex flex-col shrink-0 overflow-hidden select-none">
+              <div className="px-3 py-2.5 border-b border-[#2D2D2D] flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#AAAAAA]">
+                  FILES ({files.length})
+                </span>
+                <button
+                  onClick={() => setShowNewFileModal(true)}
+                  className="p-1 text-[#888888] hover:text-white transition-colors cursor-pointer"
+                  title="Create file"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" />
+                </button>
               </div>
-            ) : files.length === 0 ? (
-              <p className="text-[11px] font-mono text-[#555555] p-3 text-center">
-                No files in this task.
-              </p>
-            ) : (
-              files.map((file) => {
-                const isSelected =
-                  (selectedFile?._id && file._id === selectedFile._id) ||
-                  selectedFile?.name === file.name;
 
-                return (
-                  <button
-                    key={file._id || file.id || file.name}
-                    onClick={() => handleSelectFile(file)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-white text-black font-bold'
-                        : 'text-[#AAAAAA] hover:text-white hover:bg-[#141414]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <CodeIcon className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{file.path || file.name}</span>
+              <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+                {loadingFiles ? (
+                  <div className="p-4 text-center">
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-2" />
+                    <p className="text-[11px] font-mono text-[#888888]">Loading files...</p>
+                  </div>
+                ) : files.length === 0 ? (
+                  <p className="text-[11px] font-mono text-[#666666] p-3 text-center">
+                    No files in task.
+                  </p>
+                ) : (
+                  files.map((file) => {
+                    const fid = file._id || file.id || file.name;
+                    const isSelected = activeFileId === fid;
+                    const badge = getFileLanguageBadge(file.path || file.name);
+
+                    return (
+                      <button
+                        key={fid}
+                        onClick={() => handleSelectFile(file)}
+                        className={`w-full text-left px-2 py-1.5 rounded text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#37373D] text-white font-medium'
+                            : 'text-[#CCCCCC] hover:text-white hover:bg-[#2A2D2E]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span
+                            className={`w-4 h-4 text-[9px] font-mono font-bold flex items-center justify-center rounded border shrink-0 ${badge.color}`}
+                          >
+                            {badge.label}
+                          </span>
+                          <span className="truncate">{file.path || file.name}</span>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Center Editor Container */}
+          <div className="flex-1 flex flex-col min-w-0 bg-[#1E1E1E]">
+            {/* VS Code Tab Bar */}
+            <div className="flex items-center justify-between bg-[#252526] border-b border-[#2B2B2B] overflow-x-auto no-scrollbar">
+              <div className="flex items-center flex-1 min-w-0">
+                {openTabs.map((tab) => {
+                  const tabId = tab._id || tab.id || tab.name;
+                  const isActive = activeFileId === tabId;
+                  const tabDirty = fileContents[tabId] !== initialContents[tabId] && fileContents[tabId] !== undefined;
+                  const badge = getFileLanguageBadge(tab.path || tab.name);
+
+                  return (
+                    <div
+                      key={tabId}
+                      onClick={() => {
+                        setActiveFileId(tabId);
+                        setActiveLanguage(tab.language || detectLanguage(tab.name || tab.path));
+                      }}
+                      className={`flex items-center gap-2 px-3.5 py-2 text-xs font-mono border-r border-[#2B2B2B] cursor-pointer select-none relative transition-colors ${
+                        isActive
+                          ? 'bg-[#1E1E1E] text-white font-medium border-t-2 border-t-[#007ACC]'
+                          : 'bg-[#2D2D2D] text-[#969696] hover:bg-[#282828] hover:text-white border-t-2 border-t-transparent'
+                      }`}
+                    >
+                      <span
+                        className={`w-3.5 h-3.5 text-[8px] font-mono font-bold flex items-center justify-center rounded border shrink-0 ${badge.color}`}
+                      >
+                        {badge.label}
+                      </span>
+                      <span className="truncate max-w-[140px]">{tab.path || tab.name}</span>
+
+                      <button
+                        onClick={(e) => handleCloseTab(e, tabId)}
+                        className="w-4 h-4 rounded flex items-center justify-center text-[#888888] hover:text-white hover:bg-[#333333] transition-colors ml-1 cursor-pointer"
+                        title={tabDirty ? 'Unsaved changes' : 'Close tab'}
+                      >
+                        {tabDirty ? (
+                          <span className="w-2 h-2 rounded-full bg-white" />
+                        ) : (
+                          <CloseIcon className="w-3 h-3" />
+                        )}
+                      </button>
                     </div>
+                  );
+                })}
+              </div>
+
+              {/* Tab Header Controls */}
+              <div className="flex items-center gap-2 px-3 py-1">
+                {isDirty && (
+                  <button
+                    onClick={handleResetCode}
+                    className="text-xs font-mono text-[#888888] hover:text-white underline cursor-pointer"
+                  >
+                    Reset
                   </button>
-                );
-              })
+                )}
+              </div>
+            </div>
+
+            {/* VS Code Breadcrumb Bar */}
+            {activeFile && (
+              <div className="flex items-center gap-1.5 px-4 py-1 bg-[#1E1E1E] border-b border-[#2B2B2B] text-[11px] font-mono text-[#888888]">
+                <span>{currentProjectName}</span>
+                <ChevronRightIcon className="w-3 h-3 text-[#555555]" />
+                <span className="truncate max-w-[150px]">{currentTaskTitle}</span>
+                <ChevronRightIcon className="w-3 h-3 text-[#555555]" />
+                <span className="text-[#CCCCCC]">{activeFile.path || activeFile.name}</span>
+                {isDirty && <span className="text-amber-400 font-bold ml-1">●</span>}
+                {saveSuccess && (
+                  <span className="ml-auto text-emerald-400 flex items-center gap-1 text-[10px]">
+                    <CheckIcon className="w-3 h-3" /> Saved
+                  </span>
+                )}
+              </div>
             )}
+
+            {/* Editor Body */}
+            <div className="flex-1 min-h-0 bg-[#1E1E1E]">
+              {activeFile ? (
+                <CodeMirrorEditor
+                  value={editorCode}
+                  onChange={handleCodeChange}
+                  onCursorChange={setCursor}
+                  onSave={handleSaveFile}
+                  filename={activeFile.path || activeFile.name}
+                  language={activeLanguage}
+                />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#666666] bg-[#1E1E1E] h-full">
+                  <div className="w-12 h-12 rounded-xl bg-[#252526] border border-[#333333] flex items-center justify-center text-[#888888] mb-4">
+                    <CodeIcon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+                    NO FILE OPEN
+                  </h3>
+                  <p className="mt-1 text-xs text-[#888888] max-w-sm">
+                    Select a project file from the explorer on the left or create a new file to begin writing code.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Center: CodeMirror Editor Container */}
-        <div className="flex-1 flex flex-col bg-[#0A0A0A]">
-          {selectedFile ? (
-            <>
-              {/* Tab Header */}
-              <div className="h-9 bg-[#141414] border-b border-[#222222] px-4 flex items-center justify-between text-xs font-mono">
-                <span className="text-white font-semibold">
-                  {selectedFile.path || selectedFile.name}
-                </span>
-                <div className="flex items-center gap-3 text-[#666666] text-[11px]">
-                  <span>{selectedFile.language || 'javascript'}</span>
-                  {isDirty && (
-                    <button
-                      onClick={handleResetCode}
-                      className="text-xs hover:text-white underline cursor-pointer"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* CodeMirror Component */}
-              <div className="flex-1 h-full min-h-0">
-                <CodeMirrorEditor
-                  value={editorCode}
-                  onChange={(val) => setEditorCode(val)}
-                  filename={selectedFile.path || selectedFile.name}
-                  language={selectedFile.language || 'javascript'}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#666666] bg-[#0A0A0A]">
-              <div className="w-12 h-12 rounded-xl bg-[#141414] border border-[#262626] flex items-center justify-center text-[#888888] mb-4">
-                <CodeIcon className="w-6 h-6" />
-              </div>
-              <h3 className="text-sm font-bold text-white tracking-wide uppercase">
-                NO FILE SELECTED
-              </h3>
-              <p className="mt-1 text-xs text-[#888888] max-w-sm">
-                Select a project file from the left sidebar or create a new file to start editing.
-              </p>
+        {/* VS Code Status Bar */}
+        <div className="h-6 bg-[#007ACC] text-white flex items-center justify-between px-3 text-[11px] font-mono select-none shrink-0 z-20">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              <GitBranchIcon className="w-3 h-3" />
+              <span>main*</span>
             </div>
-          )}
+            <div className="flex items-center gap-1 hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              <span>⊗ 0</span>
+              <span className="ml-1">⚠ 0</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              Ln {cursor.line}, Col {cursor.col}
+            </span>
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              Spaces: 2
+            </span>
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              UTF-8
+            </span>
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              LF
+            </span>
+
+            {/* Language Selector */}
+            <select
+              value={activeLanguage}
+              onChange={(e) => setActiveLanguage(e.target.value)}
+              className="bg-transparent hover:bg-black/15 text-white text-[11px] font-mono outline-none cursor-pointer px-1 py-0.5 rounded border-none"
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.id} value={lang.id} className="bg-[#1E1E1E] text-white">
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+
+            <span title="Prettier Formatter Active" className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              ✓ Prettier
+            </span>
+          </div>
         </div>
       </div>
 
       {/* MODAL: Create New File */}
       {showNewFileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-[#0A0A0A] border border-[#222222] rounded-2xl p-6 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between pb-4 border-b border-[#1A1A1A] mb-4">
+          <div className="w-full max-w-md bg-[#0F0F0F] border border-[#2B2B2B] rounded-2xl p-6 shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between pb-4 border-b border-[#222222] mb-4">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                 Create New File
               </h3>
@@ -463,37 +732,36 @@ export default function DeveloperCodeEditor({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. src/auth/login.js"
+                  placeholder="e.g. src/auth/login.rs or app.go"
                   value={newFilePath}
-                  onChange={(e) => setNewFilePath(e.target.value)}
+                  onChange={handleNewFilePathChange}
                   required
-                  className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#666666] outline-none focus:border-white transition-colors"
+                  className="w-full bg-[#181818] border border-[#333333] rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#666666] outline-none focus:border-white transition-colors"
                 />
               </div>
 
               <div>
                 <label className="text-[11px] font-mono text-[#888888] uppercase block mb-1">
-                  Language
+                  Language Mode
                 </label>
                 <select
                   value={newFileLang}
                   onChange={(e) => setNewFileLang(e.target.value)}
-                  className="w-full bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded-xl px-3 py-2 outline-none cursor-pointer"
+                  className="w-full bg-[#181818] border border-[#333333] text-white text-xs font-mono rounded-xl px-3 py-2 outline-none cursor-pointer"
                 >
-                  <option value="javascript">JavaScript</option>
-                  <option value="typescript">TypeScript</option>
-                  <option value="json">JSON</option>
-                  <option value="html">HTML</option>
-                  <option value="css">CSS</option>
-                  <option value="python">Python</option>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.id} value={lang.id}>
+                      {lang.name} ({lang.ext})
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#1A1A1A]">
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#222222]">
                 <button
                   type="button"
                   onClick={() => setShowNewFileModal(false)}
-                  className="px-4 py-2 rounded-xl border border-[#262626] text-xs font-bold text-[#888888] hover:text-white cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[#333333] text-xs font-bold text-[#888888] hover:text-white cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -513,8 +781,8 @@ export default function DeveloperCodeEditor({
       {/* MODAL: Submit Contribution */}
       {showSubmitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg bg-[#0A0A0A] border border-[#222222] rounded-2xl p-6 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between pb-4 border-b border-[#1A1A1A] mb-4">
+          <div className="w-full max-w-lg bg-[#0F0F0F] border border-[#2B2B2B] rounded-2xl p-6 shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between pb-4 border-b border-[#222222] mb-4">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <GitCommitIcon className="w-4 h-4" />
                 <span>Submit Code Contribution</span>
@@ -528,13 +796,13 @@ export default function DeveloperCodeEditor({
             </div>
 
             <form onSubmit={handleSubmitContribution} className="space-y-4">
-              <div className="p-3 rounded-xl bg-[#111111] border border-[#222222] text-xs space-y-1">
-                <div className="flex justify-between text-mono">
-                  <span className="text-[#666666]">Files to Submit:</span>
+              <div className="p-3 rounded-xl bg-[#141414] border border-[#262626] text-xs space-y-1">
+                <div className="flex justify-between font-mono">
+                  <span className="text-[#888888]">Files to Submit:</span>
                   <span className="text-white font-bold">{files.length}</span>
                 </div>
-                <div className="flex justify-between text-mono">
-                  <span className="text-[#666666]">Status after submit:</span>
+                <div className="flex justify-between font-mono">
+                  <span className="text-[#888888]">Status after submit:</span>
                   <span className="text-white font-bold">IN_REVIEW</span>
                 </div>
               </div>
@@ -548,15 +816,15 @@ export default function DeveloperCodeEditor({
                   placeholder="Summarize the changes and implemented functionality..."
                   value={contributionNotes}
                   onChange={(e) => setContributionNotes(e.target.value)}
-                  className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#666666] outline-none focus:border-white transition-colors resize-none"
+                  className="w-full bg-[#181818] border border-[#333333] rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#666666] outline-none focus:border-white transition-colors resize-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#1A1A1A]">
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#222222]">
                 <button
                   type="button"
                   onClick={() => setShowSubmitModal(false)}
-                  className="px-4 py-2 rounded-xl border border-[#262626] text-xs font-bold text-[#888888] hover:text-white cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[#333333] text-xs font-bold text-[#888888] hover:text-white cursor-pointer"
                 >
                   Cancel
                 </button>

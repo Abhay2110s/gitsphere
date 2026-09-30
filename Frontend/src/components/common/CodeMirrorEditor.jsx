@@ -1,59 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
-import { javascript } from '@codemirror/lang-javascript';
-import { python } from '@codemirror/lang-python';
-import { java } from '@codemirror/lang-java';
-import { cpp } from '@codemirror/lang-cpp';
-import { html } from '@codemirror/lang-html';
-import { css } from '@codemirror/lang-css';
-import { json } from '@codemirror/lang-json';
-import { markdown } from '@codemirror/lang-markdown';
+import { keymap } from '@codemirror/view';
 import { oneDark } from '@codemirror/theme-one-dark';
-
-function getLanguageExtension(filenameOrLang = '') {
-  const ext = (filenameOrLang.includes('.')
-    ? filenameOrLang.split('.').pop()
-    : filenameOrLang
-  ).toLowerCase();
-
-  switch (ext) {
-    case 'js':
-    case 'jsx':
-    case 'javascript':
-      return javascript({ jsx: true });
-    case 'ts':
-    case 'tsx':
-    case 'typescript':
-      return javascript({ jsx: true, typescript: true });
-    case 'py':
-    case 'python':
-      return python();
-    case 'java':
-      return java();
-    case 'c':
-    case 'cpp':
-    case 'cxx':
-    case 'h':
-    case 'hpp':
-      return cpp();
-    case 'html':
-    case 'htm':
-      return html();
-    case 'css':
-      return css();
-    case 'json':
-      return json();
-    case 'md':
-    case 'markdown':
-      return markdown();
-    default:
-      return javascript();
-  }
-}
+import { getLanguageExtension } from '../../utils/editorLanguages';
 
 export default function CodeMirrorEditor({
   value = '',
   onChange,
+  onCursorChange,
+  onSave,
   language = 'javascript',
   filename = '',
   readOnly = false,
@@ -61,19 +16,59 @@ export default function CodeMirrorEditor({
   className = '',
   placeholder = 'Write code here...',
 }) {
+  const handleUpdate = useCallback(
+    (viewUpdate) => {
+      if (onCursorChange) {
+        const head = viewUpdate.state.selection.main.head;
+        const line = viewUpdate.state.doc.lineAt(head);
+        const lineNumber = line.number;
+        const colNumber = head - line.from + 1;
+        onCursorChange({
+          line: lineNumber,
+          col: colNumber,
+          totalLines: viewUpdate.state.doc.lines,
+          length: viewUpdate.state.doc.length,
+        });
+      }
+    },
+    [onCursorChange]
+  );
+
   const extensions = useMemo(() => {
     const langExt = getLanguageExtension(filename || language);
-    return [langExt, oneDark];
-  }, [filename, language]);
+    const exts = [langExt, oneDark];
+
+    if (onSave) {
+      exts.push(
+        keymap.of([
+          {
+            key: 'Mod-s',
+            run: () => {
+              onSave();
+              return true;
+            },
+          },
+        ])
+      );
+    }
+
+    return exts;
+  }, [filename, language, onSave]);
 
   return (
-    <div className={`w-full h-full overflow-hidden font-mono text-[13px] ${className}`}>
+    <div
+      className={`w-full h-full overflow-hidden text-[13px] ${className}`}
+      style={{
+        fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', 'Courier New', monospace",
+      }}
+    >
       <CodeMirror
         value={value}
         height={height}
         theme={oneDark}
         extensions={extensions}
         onChange={onChange}
+        onUpdate={handleUpdate}
         readOnly={readOnly}
         editable={!readOnly}
         placeholder={placeholder}
@@ -105,7 +100,7 @@ export default function CodeMirrorEditor({
         }}
         style={{
           height: '100%',
-          backgroundColor: '#0A0A0A',
+          backgroundColor: '#1E1E1E',
         }}
       />
     </div>

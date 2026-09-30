@@ -28,33 +28,49 @@ export function useTasks() {
     return updated;
   };
 
+  const createTask = useCallback(async (projectId, taskData) => {
+    const res = await tasksApi.createTask(projectId, taskData);
+    const newTask = res?.data || res?.task || res;
+    setTasks((prev) => [newTask, ...prev]);
+    window.dispatchEvent(new CustomEvent('gitsphere:task-created', { detail: newTask }));
+    return newTask;
+  }, []);
+
   useEffect(() => {
     let ignore = false;
     tasksApi.getMyTasks()
       .then((res) => {
         if (!ignore) {
-          setTasks(Array.isArray(res) ? res : res?.tasks || []);
+          const list = Array.isArray(res) ? res : res?.data || res?.tasks || [];
+          setTasks(list);
           setLoading(false);
         }
       })
       .catch((err) => {
         if (!ignore) {
-          setError(err);
+          setError(err?.message || 'Failed to fetch tasks');
           setTasks([]);
           setLoading(false);
         }
       });
 
+    const handleSync = () => {
+      fetchTasks();
+    };
+
+    window.addEventListener('gitsphere:task-created', handleSync);
     return () => {
       ignore = true;
+      window.removeEventListener('gitsphere:task-created', handleSync);
     };
-  }, []);
+  }, [fetchTasks]);
 
   return {
     tasks,
     loading,
     error,
     refetch: fetchTasks,
+    createTask,
     updateTaskStatus,
   };
 }
