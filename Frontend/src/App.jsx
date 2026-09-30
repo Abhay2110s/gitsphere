@@ -31,12 +31,30 @@ function App() {
         return 'error';
       }
 
+      if (path === '/404' || hash === '#404') {
+        return '404';
+      }
+
       if (path.startsWith('/developer') || hash.startsWith('#developer') || path.startsWith('/dev') || hash.startsWith('#dev')) {
         return 'developer';
       }
 
-      if (path.startsWith('/manager') || hash.startsWith('#manager') || path === '/dashboard' || hash === '#dashboard') {
+      if (path.startsWith('/manager') || hash.startsWith('#manager')) {
         return 'manager';
+      }
+
+      if (path === '/dashboard' || hash === '#dashboard') {
+        try {
+          const stored = localStorage.getItem('gitsphere_user');
+          if (stored) {
+            const u = JSON.parse(stored);
+            const role = String(u.role || '').toUpperCase();
+            if (role === 'MANAGER' || role === 'ADMIN') return 'manager';
+          }
+        } catch {
+          // ignore
+        }
+        return 'developer';
       }
 
       if (path === '/register' || path === '/signup' || hash === '#register' || hash === '#signup') {
@@ -94,10 +112,27 @@ function App() {
         setCurrentRoute('unauthorized');
       } else if (path === '/error' || hash === '#error') {
         setCurrentRoute('error');
+      } else if (path === '/404' || hash === '#404') {
+        setCurrentRoute('404');
       } else if (path.startsWith('/developer') || hash.startsWith('#developer') || path.startsWith('/dev') || hash.startsWith('#dev')) {
         setCurrentRoute('developer');
-      } else if (path.startsWith('/manager') || hash.startsWith('#manager') || path === '/dashboard' || hash === '#dashboard') {
+      } else if (path.startsWith('/manager') || hash.startsWith('#manager')) {
         setCurrentRoute('manager');
+      } else if (path === '/dashboard' || hash === '#dashboard') {
+        try {
+          const stored = localStorage.getItem('gitsphere_user');
+          if (stored) {
+            const u = JSON.parse(stored);
+            const role = String(u.role || '').toUpperCase();
+            if (role === 'MANAGER' || role === 'ADMIN') {
+              setCurrentRoute('manager');
+              return;
+            }
+          }
+        } catch {
+          // ignore
+        }
+        setCurrentRoute('developer');
       } else if (
         path === '/register' ||
         path === '/signup' ||
@@ -166,10 +201,51 @@ function App() {
       window.history.pushState({}, '', '#reset-password');
     } else if (route === 'verify') {
       window.history.pushState({}, '', '#verify');
+    } else if (route === '404') {
+      window.history.pushState({}, '', '#404');
     } else {
-      window.history.pushState({}, '', window.location.pathname.replace(/\/register|\/signup|\/login|\/signin|\/forgot-password|\/forgot|\/forget-password|\/forget|\/reset-password|\/reset|\/verify|\/otp/, '') || '/');
+      window.history.pushState({}, '', window.location.pathname.replace(/\/register|\/signup|\/login|\/signin|\/forgot-password|\/forgot|\/forget-password|\/forget|\/reset-password|\/reset|\/verify|\/otp|\/404|\/unauthorized|\/error/, '') || '/');
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  };
+
+  const handleAuthSuccess = (authenticatedUser) => {
+    try {
+      let role = '';
+      if (authenticatedUser && authenticatedUser.role) {
+        role = String(authenticatedUser.role).toUpperCase();
+      } else {
+        const stored = localStorage.getItem('gitsphere_user');
+        if (stored) {
+          const u = JSON.parse(stored);
+          role = String(u.role || '').toUpperCase();
+        }
+      }
+
+      if (role === 'MANAGER' || role === 'ADMIN') {
+        navigateTo('manager');
+        return;
+      }
+      if (role === 'USER' || role === 'DEVELOPER') {
+        navigateTo('developer');
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    navigateTo('developer');
+  };
+
+  const handleVerificationComplete = (verifiedUser) => {
+    const purpose = typeof window !== 'undefined' ? localStorage.getItem('gitsphere_otp_purpose') : null;
+    if (purpose === 'reset-password') {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('gitsphere_otp_purpose');
+      }
+      navigateTo('reset-password');
+    } else {
+      handleAuthSuccess(verifiedUser);
+    }
   };
 
   if (currentRoute === 'workspace') {
@@ -178,6 +254,17 @@ function App() {
         <WorkspaceApp
           projectId={workspaceProjectId}
           onBack={() => navigateTo('developer')}
+        />
+      </Suspense>
+    );
+  }
+
+  if (currentRoute === '404') {
+    return (
+      <Suspense fallback={null}>
+        <NotFoundPage
+          onGoHome={() => navigateTo('landing')}
+          onGoDashboard={handleAuthSuccess}
         />
       </Suspense>
     );
@@ -252,28 +339,12 @@ function App() {
         <OtpVerificationPage
           userEmail={verificationEmail}
           onChangeEmail={() => navigateTo('register')}
-          onVerificationComplete={() => navigateTo('reset-password')}
+          onVerificationComplete={handleVerificationComplete}
           onNavigateToLanding={() => navigateTo('landing')}
         />
       </Suspense>
     );
   }
-
-  const handleAuthSuccess = () => {
-    try {
-      const stored = localStorage.getItem('gitsphere_user');
-      if (stored) {
-        const u = JSON.parse(stored);
-        if (u.role === 'USER' || u.role === 'DEVELOPER') {
-          navigateTo('developer');
-          return;
-        }
-      }
-    } catch {
-      // fallback
-    }
-    navigateTo('manager');
-  };
 
   if (currentRoute === 'register') {
     return (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GitSphereLogo, ArrowRightIcon } from '../../components/common/Icons';
+import { authApi } from '../../api/auth.api';
 
 export default function ForgotPasswordPage({
   onNavigateToLogin,
@@ -50,47 +51,20 @@ export default function ForgotPasswordPage({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/v1/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || 'Something went wrong. Please try again.');
-      }
+      await authApi.forgotPassword(trimmedEmail);
 
       setSubmittedEmail(trimmedEmail);
       if (typeof window !== 'undefined') {
         localStorage.setItem('gitsphere_verification_email', trimmedEmail);
+        localStorage.setItem('gitsphere_otp_purpose', 'reset-password');
       }
       setIsLoading(false);
       setIsSuccess(true);
       setResendCooldown(45);
       setCanResend(false);
     } catch (err) {
-      if (
-        err.message.includes('Failed to fetch') ||
-        err.message.includes('404') ||
-        err.message.includes('NetworkError') ||
-        err.message.includes('Not Found')
-      ) {
-        // Fallback for offline/prototype mode
-        setTimeout(() => {
-          setSubmittedEmail(trimmedEmail);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('gitsphere_verification_email', trimmedEmail);
-          }
-          setIsLoading(false);
-          setIsSuccess(true);
-          setResendCooldown(45);
-          setCanResend(false);
-        }, 600);
-      } else {
-        setIsLoading(false);
-        setErrorMessage(err.message || 'Something went wrong. Please try again.');
-      }
+      setIsLoading(false);
+      setErrorMessage(err.message || 'Something went wrong. Please try again.');
     }
   };
 
@@ -102,19 +76,16 @@ export default function ForgotPasswordPage({
     setTimeout(() => setResendNotice(''), 4000);
 
     try {
-      await fetch('/api/v1/auth/resend-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: submittedEmail }),
-      });
-    } catch {
-      // Prototype resilient
+      await authApi.resendOtp(submittedEmail);
+    } catch (err) {
+      setResendNotice(err.message || 'Failed to resend code');
     }
   };
 
   const handleVerifyClick = () => {
     if (submittedEmail && typeof window !== 'undefined') {
       localStorage.setItem('gitsphere_verification_email', submittedEmail);
+      localStorage.setItem('gitsphere_otp_purpose', 'reset-password');
     }
     if (onNavigateToVerify) {
       onNavigateToVerify(submittedEmail);

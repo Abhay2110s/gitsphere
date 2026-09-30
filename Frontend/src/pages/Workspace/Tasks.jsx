@@ -5,12 +5,7 @@ import { PageSkeleton } from '../../components/workspace/SkeletonLoaders';
 import {
   TaskCheckIcon,
   SearchIcon,
-  FilterIcon,
   PlusIcon,
-  ClockIcon,
-  UserIcon,
-  CalendarIcon,
-  SortIcon,
 } from '../../components/common/Icons';
 
 const STATUS_COLORS = {

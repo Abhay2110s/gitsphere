@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useProjects } from '../../hooks/useProjects';
 import { useTasks } from '../../hooks/useTasks';
 import { useAuth } from '../../hooks/useAuth';
@@ -17,24 +17,21 @@ export default function Messages() {
   const [channelType, setChannelType] = useState('project'); // 'project' | 'task'
   const [selectedChannelId, setSelectedChannelId] = useState('');
 
-  // Auto-select first channel
-  useEffect(() => {
-    if (channelType === 'project' && projects.length > 0 && !selectedChannelId) {
-      setSelectedChannelId(projects[0]._id || projects[0].id);
-    } else if (channelType === 'task' && tasks.length > 0 && !selectedChannelId) {
-      setSelectedChannelId(tasks[0]._id || tasks[0].id);
-    }
-  }, [channelType, projects, tasks, selectedChannelId]);
+  const effectiveChannelId =
+    selectedChannelId ||
+    (channelType === 'project'
+      ? (projects.length > 0 ? projects[0]._id || projects[0].id : '')
+      : (tasks.length > 0 ? tasks[0]._id || tasks[0].id : ''));
 
   const { messages, loading, error, refetch, sendMessage } = useMessages(
     channelType,
-    selectedChannelId
+    effectiveChannelId
   );
 
   const activeChannelName =
     channelType === 'project'
-      ? projects.find((p) => (p._id || p.id) === selectedChannelId)?.name || 'Project Channel'
-      : tasks.find((t) => (t._id || t.id) === selectedChannelId)?.title || 'Task Channel';
+      ? projects.find((p) => (p._id || p.id) === effectiveChannelId)?.name || 'Project Channel'
+      : tasks.find((t) => (t._id || t.id) === effectiveChannelId)?.title || 'Task Channel';
 
   const channelsList = channelType === 'project' ? projects : tasks;
 
@@ -89,7 +86,7 @@ export default function Messages() {
             ) : (
               channelsList.map((item) => {
                 const itemId = item._id || item.id;
-                const isSelected = selectedChannelId === itemId;
+                const isSelected = effectiveChannelId === itemId;
                 const title = item.name || item.title;
 
                 return (
@@ -136,7 +133,7 @@ export default function Messages() {
 
         {/* Right Column: Chat Window */}
         <div className="lg:col-span-8 flex flex-col justify-between bg-[#0A0A0A]">
-          {selectedChannelId ? (
+          {effectiveChannelId ? (
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-[#1C1C1C] bg-[#0C0C0C] flex items-center justify-between">
@@ -148,7 +145,19 @@ export default function Messages() {
                     {channelType} message stream
                   </span>
                 </div>
+                {loading && (
+                  <span className="text-[10px] font-mono text-[#888888]">Loading...</span>
+                )}
               </div>
+
+              {error && (
+                <div className="p-3 bg-red-950/30 border-b border-red-900/30 text-xs text-red-400 flex items-center justify-between font-mono">
+                  <span>Failed to load messages: {error.message || 'Error occurred'}</span>
+                  <button onClick={refetch} className="underline hover:text-white cursor-pointer">
+                    Retry
+                  </button>
+                </div>
+              )}
 
               {/* Message List */}
               <MessageList

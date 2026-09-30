@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import WorkspaceLayout from '../../components/workspace/WorkspaceLayout';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { ErrorBanner, PageSkeleton } from '../../components/workspace/SkeletonLoaders';
@@ -31,7 +31,9 @@ export default function WorkspaceApp({ projectId, onBack, userRole = 'USER' }) {
         const u = JSON.parse(stored);
         return u.role || 'USER';
       }
-    } catch {}
+    } catch {
+      // Fallback
+    }
     return 'USER';
   })();
 

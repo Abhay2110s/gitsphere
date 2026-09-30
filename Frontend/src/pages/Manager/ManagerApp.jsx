@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ManagerLayout from '../../components/manager/ManagerLayout';
 import Dashboard from './Dashboard';
 import Projects from './Projects';

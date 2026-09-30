@@ -2,14 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { GitSphereLogo, CloseIcon, CheckIcon, ArrowRightIcon } from './Icons';
 
 export default function Modal({ isOpen, mode = 'signup', onClose }) {
-  const [activeMode, setActiveMode] = useState(mode);
+  const [userSelectedMode, setUserSelectedMode] = useState(null);
+  const [prevMode, setPrevMode] = useState(mode);
+
+  if (prevMode !== mode) {
+    setPrevMode(mode);
+    setUserSelectedMode(null);
+  }
+
+  const activeMode = userSelectedMode ?? mode;
+  const setActiveMode = setUserSelectedMode;
   const [email, setEmail] = useState('');
   const [org, setOrg] = useState('');
   const [submitted, setSubmitted] = useState(false);
-
-  useEffect(() => {
-    setActiveMode(mode);
-  }, [mode]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

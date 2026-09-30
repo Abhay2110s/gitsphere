@@ -9,44 +9,63 @@ import { CardSkeleton } from '../../components/developer/LoadingSkeleton';
 import { GitPullRequestIcon, FilterIcon } from '../../components/common/Icons';
 
 export default function Reviews({ onSelectReview }) {
-  const { tasks } = useTasks();
+  const { tasks, loading: tasksLoading } = useTasks();
   const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const fetchAllReviews = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      // Collect reviews for assigned tasks
-      if (tasks.length === 0) {
-        setReviews([]);
-        return;
-      }
-
-      const reviewPromises = tasks.map((t) =>
-        reviewsApi.getTaskReviews(t._id || t.id).catch(() => [])
-      );
-      const results = await Promise.all(reviewPromises);
-      const flattened = results.flat().filter(Boolean);
-      setReviews(flattened);
-    } catch (err) {
-      setError(err);
-      setReviews([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchAllReviews();
+    if (tasks.length === 0) return;
+    let ignore = false;
+
+    const reviewPromises = tasks.map((t) =>
+      reviewsApi.getTaskReviews(t._id || t.id).catch(() => [])
+    );
+
+    Promise.all(reviewPromises)
+      .then((results) => {
+        if (!ignore) {
+          const flattened = results.flat().filter(Boolean);
+          setReviews(flattened);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setReviews([]);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [tasks]);
+
+  const refetch = () => {
+    if (tasks.length === 0) return;
+    setLoading(true);
+    setError(null);
+    const reviewPromises = tasks.map((t) =>
+      reviewsApi.getTaskReviews(t._id || t.id).catch(() => [])
+    );
+    Promise.all(reviewPromises)
+      .then((results) => setReviews(results.flat().filter(Boolean)))
+      .catch(setError)
+      .finally(() => setLoading(false));
+  };
 
   const filteredReviews = reviews.filter((r) => {
     if (statusFilter === 'ALL') return true;
     return r.status === statusFilter;
   });
+
+  const isLoading = tasksLoading || loading;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -73,13 +92,13 @@ export default function Reviews({ onSelectReview }) {
         </div>
       )}
 
-      {loading ? (
+      {isLoading ? (
         <CardSkeleton count={3} />
       ) : error ? (
         <ErrorState
           title="Failed to load reviews"
           message={error.message || 'Could not fetch review data from the server.'}
-          onRetry={fetchAllReviews}
+          onRetry={refetch}
         />
       ) : reviews.length === 0 ? (
         <EmptyState

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { GitSphereLogo, ArrowRightIcon } from '../../components/common/Icons';
+import { authApi } from '../../api/auth.api';
 
 // Eye toggle icons for show/hide password (matches LoginPage & RegisterPage)
 function EyeIcon({ className = "w-4 h-4" }) {
@@ -66,46 +67,16 @@ export default function ResetPasswordPage({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/v1/auth/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: effectiveEmail,
-          password: newPassword,
-        }),
+      await authApi.resetPassword({
+        email: effectiveEmail,
+        password: newPassword,
       });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        if (response.status === 401 || response.status === 403 || data.message?.includes('expired')) {
-          throw new Error('Your reset session has expired. Please request a new code.');
-        } else if (data.message) {
-          throw new Error(data.message);
-        } else {
-          throw new Error('Something went wrong. Please try again.');
-        }
-      }
 
       setIsLoading(false);
       setIsSuccess(true);
     } catch (err) {
-      if (
-        err.message.includes('Failed to fetch') ||
-        err.message.includes('404') ||
-        err.message.includes('NetworkError') ||
-        err.message.includes('Not Found')
-      ) {
-        // Prototype fallback for offline or mock mode
-        setTimeout(() => {
-          setIsLoading(false);
-          setIsSuccess(true);
-        }, 600);
-      } else {
-        setIsLoading(false);
-        setErrorMessage(err.message || 'Something went wrong. Please try again.');
-      }
+      setIsLoading(false);
+      setErrorMessage(err.message || 'Something went wrong. Please try again.');
     }
   };
 

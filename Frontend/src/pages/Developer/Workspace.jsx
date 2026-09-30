@@ -10,7 +10,6 @@ import { TableSkeleton } from '../../components/developer/LoadingSkeleton';
 import {
   LayersIcon,
   CodeIcon,
-  FolderIcon,
   TaskCheckIcon,
   PlusIcon,
   GitCommitIcon,
@@ -32,6 +31,25 @@ export default function Workspace({
     initialTask?._id || initialTask?.id || ''
   );
 
+  const effectiveProjectId =
+    selectedProjectId ||
+    (projects.length > 0 ? (projects[0]._id || projects[0].id) : '');
+
+  const projectTasks = tasks.filter(
+    (t) =>
+      !effectiveProjectId ||
+      t.project?._id === effectiveProjectId ||
+      t.project === effectiveProjectId
+  );
+
+  const effectiveTaskId =
+    selectedTaskId ||
+    (projectTasks.length > 0
+      ? (projectTasks[0]._id || projectTasks[0].id)
+      : tasks.length > 0
+      ? (tasks[0]._id || tasks[0].id)
+      : '');
+
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileComments, setFileComments] = useState([]);
@@ -39,74 +57,78 @@ export default function Workspace({
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [error, setError] = useState(null);
 
-  // Auto-select first project/task if available and none selected
+  // Fetch workspace files whenever effectiveTaskId changes
   useEffect(() => {
-    if (!selectedProjectId && projects.length > 0) {
-      setSelectedProjectId(projects[0]._id || projects[0].id);
-    }
-  }, [projects, selectedProjectId]);
+    if (!effectiveTaskId) return;
+    let ignore = false;
 
-  useEffect(() => {
-    if (!selectedTaskId && tasks.length > 0) {
-      // Find task matching selected project if possible
-      const match = tasks.find(
-        (t) => t.project?._id === selectedProjectId || t.project === selectedProjectId
-      );
-      setSelectedTaskId(match ? match._id || match.id : tasks[0]._id || tasks[0].id);
-    }
-  }, [tasks, selectedProjectId, selectedTaskId]);
-
-  // Fetch workspace files whenever selected task changes
-  useEffect(() => {
-    if (!selectedTaskId) {
-      setFiles([]);
-      setSelectedFile(null);
-      return;
-    }
-
-    const fetchFiles = async () => {
-      try {
-        setLoadingFiles(true);
-        setError(null);
-        const res = await tasksApi.getTaskFiles(selectedTaskId);
-        const fileList = Array.isArray(res) ? res : res?.files || [];
-        setFiles(fileList);
-        if (fileList.length > 0) {
-          setSelectedFile(fileList[0]);
-        } else {
+    tasksApi.getTaskFiles(effectiveTaskId)
+      .then((res) => {
+        if (!ignore) {
+          const fileList = Array.isArray(res) ? res : res?.files || [];
+          setFiles(fileList);
+          setSelectedFile(fileList.length > 0 ? fileList[0] : null);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setFiles([]);
           setSelectedFile(null);
         }
-      } catch (err) {
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoadingFiles(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [effectiveTaskId]);
+
+  const refetchFiles = () => {
+    if (!effectiveTaskId) return;
+    setLoadingFiles(true);
+    setError(null);
+    tasksApi.getTaskFiles(effectiveTaskId)
+      .then((res) => {
+        const fileList = Array.isArray(res) ? res : res?.files || [];
+        setFiles(fileList);
+        setSelectedFile(fileList.length > 0 ? fileList[0] : null);
+      })
+      .catch((err) => {
         setError(err);
         setFiles([]);
         setSelectedFile(null);
-      } finally {
-        setLoadingFiles(false);
-      }
-    };
+      })
+      .finally(() => setLoadingFiles(false));
+  };
 
-    fetchFiles();
-  }, [selectedTaskId]);
+  const activeFileId = selectedFile?._id || selectedFile?.id || '';
 
   // Fetch comments when selected file changes
   useEffect(() => {
-    if (!selectedFile?._id && !selectedFile?.id) {
-      setFileComments([]);
-      return;
-    }
+    if (!activeFileId) return;
+    let ignore = false;
 
-    const fetchComments = async () => {
-      try {
-        const fId = selectedFile._id || selectedFile.id;
-        const res = await workspaceApi.getFileComments(fId);
-        setFileComments(Array.isArray(res) ? res : res?.comments || []);
-      } catch (err) {
-        setFileComments([]);
-      }
+    workspaceApi.getFileComments(activeFileId)
+      .then((res) => {
+        if (!ignore) {
+          setFileComments(Array.isArray(res) ? res : res?.comments || []);
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setFileComments([]);
+        }
+      });
+
+    return () => {
+      ignore = true;
     };
-
-    fetchComments();
-  }, [selectedFile]);
+  }, [activeFileId]);
 
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -126,8 +148,9 @@ export default function Workspace({
     }
   };
 
-  const currentTask = tasks.find((t) => (t._id || t.id) === selectedTaskId);
-  const currentProject = projects.find((p) => (p._id || p.id) === selectedProjectId);
+  const currentTask = tasks.find((t) => (t._id || t.id) === effectiveTaskId);
+  const currentProject = projects.find((p) => (p._id || p.id) === effectiveProjectId);
+  const isLoading = loadingProjects || loadingTasks || loadingFiles;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -135,15 +158,26 @@ export default function Workspace({
         title="Developer Workspace"
         description="Collaborative workspace linking repositories, active task tickets, code files, and review threads."
         actions={
-          onOpenCodeEditor && (
-            <button
-              onClick={() => onOpenCodeEditor({ project: currentProject, task: currentTask, file: selectedFile })}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-[#E5E5E5] transition-colors cursor-pointer shadow-sm"
-            >
-              <CodeIcon className="w-4 h-4" />
-              <span>Open in Monaco Editor</span>
-            </button>
-          )
+          <div className="flex items-center gap-2">
+            {onNavigateToContributions && (
+              <button
+                onClick={onNavigateToContributions}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#2A2A2A] bg-[#141414] hover:bg-[#1E1E1E] text-white text-xs font-mono transition-colors cursor-pointer"
+              >
+                <GitCommitIcon className="w-3.5 h-3.5" />
+                <span>Contributions</span>
+              </button>
+            )}
+            {onOpenCodeEditor && (
+              <button
+                onClick={() => onOpenCodeEditor({ project: currentProject, task: currentTask, file: selectedFile })}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-[#E5E5E5] transition-colors cursor-pointer shadow-sm"
+              >
+                <CodeIcon className="w-4 h-4" />
+                <span>Open in Code Editor</span>
+              </button>
+            )}
+          </div>
         }
       />
 
@@ -154,8 +188,12 @@ export default function Workspace({
             Active Repository
           </label>
           <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
+            value={effectiveProjectId}
+            onChange={(e) => {
+              setSelectedProjectId(e.target.value);
+              setSelectedTaskId('');
+              setLoadingFiles(true);
+            }}
             className="w-full bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded-xl px-3 py-2 outline-none focus:border-white transition-colors cursor-pointer"
           >
             {projects.length === 0 ? (
@@ -175,14 +213,17 @@ export default function Workspace({
             Active Task Ticket
           </label>
           <select
-            value={selectedTaskId}
-            onChange={(e) => setSelectedTaskId(e.target.value)}
+            value={effectiveTaskId}
+            onChange={(e) => {
+              setSelectedTaskId(e.target.value);
+              setLoadingFiles(true);
+            }}
             className="w-full bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded-xl px-3 py-2 outline-none focus:border-white transition-colors cursor-pointer"
           >
-            {tasks.length === 0 ? (
-              <option value="">No assigned tasks</option>
+            {projectTasks.length === 0 ? (
+              <option value="">No tasks for this project</option>
             ) : (
-              tasks.map((t) => (
+              projectTasks.map((t) => (
                 <option key={t._id || t.id} value={t._id || t.id}>
                   {t.title} ({t.status})
                 </option>
@@ -193,13 +234,13 @@ export default function Workspace({
       </div>
 
       {/* Main Workspace Stage */}
-      {loadingFiles ? (
+      {isLoading ? (
         <TableSkeleton rows={4} />
       ) : error ? (
         <ErrorState
           title="Failed to load workspace"
           message={error.message || 'Could not fetch files for this task.'}
-          onRetry={() => setSelectedTaskId(selectedTaskId)}
+          onRetry={refetchFiles}
         />
       ) : tasks.length === 0 ? (
         <EmptyState

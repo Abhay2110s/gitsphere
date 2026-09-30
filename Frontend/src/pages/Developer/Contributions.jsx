@@ -19,42 +19,41 @@ export default function Contributions({
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  // When projects load, pick first project if not selected
-  useEffect(() => {
-    if (!selectedProjectId && projects.length > 0) {
-      setSelectedProjectId(projects[0]._id || projects[0].id);
-    }
-  }, [projects, selectedProjectId]);
-
-  // Fetch contributions for selected project
-  const fetchProjectContributions = async (pid = selectedProjectId) => {
-    if (!pid) {
-      setContributions([]);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await contributionsApi.getContributions(pid);
-      setContributions(Array.isArray(res) ? res : res?.contributions || []);
-    } catch (err) {
-      setError(err);
-      setContributions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const activeProjectId = selectedProjectId || (projects.length > 0 ? (projects[0]._id || projects[0].id) : '');
 
   useEffect(() => {
-    if (selectedProjectId) {
-      fetchProjectContributions(selectedProjectId);
-    }
-  }, [selectedProjectId]);
+    if (!activeProjectId) return;
+    let ignore = false;
+
+    contributionsApi.getContributions(activeProjectId)
+      .then((res) => {
+        if (!ignore) {
+          setContributions(Array.isArray(res) ? res : res?.contributions || []);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setContributions([]);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeProjectId]);
 
   const filteredContributions = contributions.filter((c) => {
     if (statusFilter === 'ALL') return true;
     return c.status === statusFilter;
   });
+
+  const isLoading = loadingProjects || loading;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -79,8 +78,11 @@ export default function Contributions({
         <div className="flex items-center gap-2 text-xs font-mono">
           <span className="text-[#666666]">Select Project:</span>
           <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
+            value={activeProjectId}
+            onChange={(e) => {
+              setSelectedProjectId(e.target.value);
+              setLoading(true);
+            }}
             className="bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded-xl px-3 py-1.5 outline-none focus:border-white transition-colors cursor-pointer"
           >
             {projects.length === 0 ? (
@@ -113,13 +115,21 @@ export default function Contributions({
       </div>
 
       {/* Content Area */}
-      {loading ? (
+      {isLoading ? (
         <CardSkeleton count={3} />
       ) : error ? (
         <ErrorState
           title="Failed to load contributions"
           message={error.message || 'Could not fetch contributions from the server.'}
-          onRetry={() => fetchProjectContributions(selectedProjectId)}
+          onRetry={() => {
+            if (!activeProjectId) return;
+            setLoading(true);
+            setError(null);
+            contributionsApi.getContributions(activeProjectId)
+              .then((res) => setContributions(Array.isArray(res) ? res : res?.contributions || []))
+              .catch(setError)
+              .finally(() => setLoading(false));
+          }}
         />
       ) : projects.length === 0 ? (
         <EmptyState

@@ -24,7 +24,7 @@ async function request(endpoint, options = {}) {
   try {
     token = localStorage.getItem('gitsphere_token') || localStorage.getItem('token');
   } catch {
-    token = null;
+    // ignore
   }
 
   const defaultHeaders = {

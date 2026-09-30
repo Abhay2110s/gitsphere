@@ -171,8 +171,37 @@ export const resendOtp = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @desc    Forgot password - request reset code
+ * @route   POST /api/v1/auth/forgot-password
+ * @access  Public
+ */
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const result = await authService.forgotPassword(req.body);
+  return sendSuccess(res, {
+    statusCode: 200,
+    message: result.message,
+    data: result
+  });
+});
+
+/**
+ * @desc    Reset password
+ * @route   POST /api/v1/auth/reset-password
+ * @access  Public
+ */
+export const resetPassword = asyncHandler(async (req, res) => {
+  const result = await authService.resetPassword(req.body);
+  return sendSuccess(res, {
+    statusCode: 200,
+    message: result.message,
+    data: result
+  });
+});
+
 export {
   registerUser as register,
   loginUser as login
 };
+
 

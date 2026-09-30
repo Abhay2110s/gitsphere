@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import TaskStatusBadge from './TaskStatusBadge';
 
 export default function TaskCard({ task, onStatusChange, onSelect }) {
-  if (!task) return null;
-
   const [updating, setUpdating] = useState(false);
+
+  if (!task) return null;
 
   const handleStatusSelect = async (e) => {
     e.stopPropagation();

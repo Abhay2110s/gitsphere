@@ -48,3 +48,34 @@ export const deleteAttachment = asyncHandler(async (req, res) => {
     message: result.message
   });
 });
+
+/**
+ * @desc    Get attachment details by ID
+ * @route   GET /api/v1/attachments/:id
+ * @access  Private
+ */
+export const getAttachmentById = asyncHandler(async (req, res) => {
+  const attachment = await attachmentService.getAttachmentById(req.params.id, req.user);
+
+  return sendSuccess(res, {
+    message: 'Attachment details retrieved',
+    data: attachment
+  });
+});
+
+/**
+ * @desc    Download / Stream attachment file with authorization
+ * @route   GET /api/v1/attachments/:id/download
+ * @access  Private
+ */
+export const downloadAttachment = asyncHandler(async (req, res) => {
+  const { filePath, mimeType, originalName } = await attachmentService.getAttachmentFile(
+    req.params.id,
+    req.user
+  );
+
+  res.setHeader('Content-Type', mimeType);
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(originalName)}"`);
+  return res.sendFile(filePath);
+});
+

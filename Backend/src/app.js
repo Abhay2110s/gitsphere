@@ -4,11 +4,13 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './config/swagger.js';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware.js';
+import { authenticate } from './middleware/auth.middleware.js';
 import { sendSuccess } from './utils/response.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
@@ -32,8 +34,22 @@ const app = express();
 // Swagger Documentation UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Serve uploaded static files
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Secure uploaded files with authentication and path traversal protection
+app.use('/uploads', authenticate, (req, res) => {
+  const safeFilename = path.basename(req.path);
+  const uploadsDir = path.resolve(__dirname, '../uploads');
+  const resolvedPath = path.resolve(uploadsDir, safeFilename);
+
+  if (!resolvedPath.startsWith(uploadsDir)) {
+    return res.status(400).json({ success: false, message: 'Invalid file path' });
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
+    return res.status(404).json({ success: false, message: 'File not found' });
+  }
+
+  return res.sendFile(resolvedPath);
+});
 
 // Security HTTP headers
 app.use(

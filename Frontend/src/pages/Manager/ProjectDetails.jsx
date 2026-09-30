@@ -9,7 +9,6 @@ import {
   GitPullRequestIcon,
   ActivityIcon,
   GitCommitIcon,
-  ArrowRightIcon,
 } from '../../components/common/Icons';
 
 export default function ProjectDetails({ project, onBackToProjects }) {

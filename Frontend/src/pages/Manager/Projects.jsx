@@ -31,7 +31,7 @@ export default function Projects({ onSelectProject }) {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-[#E5E5E5] transition-all cursor-pointer shadow-sm"
           >
             <PlusIcon className="w-3.5 h-3.5" />
-            <span>+ New Project</span>
+            <span>Create Project</span>
           </button>
         </div>
       </div>
@@ -51,8 +51,6 @@ export default function Projects({ onSelectProject }) {
             icon={FolderIcon}
             title="NO PROJECTS YET"
             description="You haven't created any projects yet. Create your first project to begin organizing your development workflow."
-            actionLabel="+ Create Your First Project"
-            onAction={() => setIsModalOpen(true)}
             className="border-0 bg-transparent py-12"
           />
         ) : (

@@ -5,12 +5,9 @@ import { PageSkeleton } from '../../components/workspace/SkeletonLoaders';
 import {
   UsersIcon,
   PlusIcon,
-  UserIcon,
-  TaskCheckIcon,
-  GitCommitIcon,
 } from '../../components/common/Icons';
 
-export default function Team({ team = [], stats, loading, userRole }) {
+export default function Team({ team = [], loading, userRole }) {
   if (loading) return <PageSkeleton />;
 
   const managers = team.filter((m) => m.role === 'MANAGER');

@@ -3,13 +3,11 @@ import EmptyState from '../../components/workspace/EmptyState';
 import { TableSkeleton } from '../../components/workspace/SkeletonLoaders';
 import {
   GitPullRequestIcon,
-  SearchIcon,
   UserIcon,
   ClockIcon,
   FileIcon,
   CheckIcon,
   AlertTriangleIcon,
-  EyeIcon,
 } from '../../components/common/Icons';
 
 const REVIEW_STATUS_STYLES = {

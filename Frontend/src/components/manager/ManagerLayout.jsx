@@ -10,13 +10,9 @@ import {
   MessageIcon,
   BellIcon,
   SettingsIcon,
-  PlusIcon,
   MenuIcon,
   CloseIcon,
 } from '../common/Icons';
-import CreateProjectModal from './CreateProjectModal';
-import CreateTaskModal from './CreateTaskModal';
-import AddDeveloperModal from './AddDeveloperModal';
 
 export default function ManagerLayout({
   currentRoute = 'dashboard',
@@ -25,9 +21,6 @@ export default function ManagerLayout({
   children,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [projectModalOpen, setProjectModalOpen] = useState(false);
-  const [taskModalOpen, setTaskModalOpen] = useState(false);
-  const [devModalOpen, setDevModalOpen] = useState(false);
 
   const navigationItems = [
     { id: 'dashboard', name: 'Dashboard', icon: ActivityIcon, path: '/manager/dashboard' },
@@ -186,15 +179,6 @@ export default function ManagerLayout({
 
           <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={() => setProjectModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-[#E5E5E5] transition-colors cursor-pointer shadow-sm"
-            >
-              <PlusIcon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">New Project</span>
-              <span className="sm:hidden">Project</span>
-            </button>
-
-            <button
               onClick={() => handleNavClick('notifications')}
               className="p-2 rounded-lg border border-[#222222] bg-[#0F0F0F] text-[#888888] hover:text-white hover:border-[#333333] transition-colors relative cursor-pointer"
               title="Notifications"
@@ -210,31 +194,6 @@ export default function ManagerLayout({
           {children}
         </main>
       </div>
-
-      {/* Global Modals */}
-      <CreateProjectModal
-        isOpen={projectModalOpen}
-        onClose={() => setProjectModalOpen(false)}
-        onCreateProject={(data) => {
-          console.log('Project created:', data);
-        }}
-      />
-
-      <CreateTaskModal
-        isOpen={taskModalOpen}
-        onClose={() => setTaskModalOpen(false)}
-        onCreateTask={(data) => {
-          console.log('Task created:', data);
-        }}
-      />
-
-      <AddDeveloperModal
-        isOpen={devModalOpen}
-        onClose={() => setDevModalOpen(false)}
-        onInviteDeveloper={(data) => {
-          console.log('Developer invited:', data);
-        }}
-      />
     </div>
   );
 }

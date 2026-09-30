@@ -4,7 +4,6 @@ import { useAuth } from '../../hooks/useAuth';
 import StatCard from '../../components/developer/StatCard';
 import EmptyState from '../../components/developer/EmptyState';
 import ErrorState from '../../components/developer/ErrorState';
-import TaskCard from '../../components/developer/TaskCard';
 import ProjectCard from '../../components/developer/ProjectCard';
 import { DashboardSkeleton } from '../../components/developer/LoadingSkeleton';
 import {
@@ -20,7 +19,6 @@ export default function Dashboard({
   onNavigateToTasks,
   onNavigateToContributions,
   onSelectProject,
-  onSelectTask,
 }) {
   const { user } = useAuth();
   const { data, loading, error, refetch } = useDeveloperDashboard();
@@ -67,12 +65,14 @@ export default function Dashboard({
           subtext={`${data.todo} waiting in to-do`}
           icon={ActivityIcon}
         />
-        <StatCard
-          label="Completed Tasks"
-          value={data.completed}
-          subtext="Approved & completed"
-          icon={GitCommitIcon}
-        />
+        <div onClick={onNavigateToContributions} className={onNavigateToContributions ? 'cursor-pointer' : ''}>
+          <StatCard
+            label="Completed Tasks"
+            value={data.completed}
+            subtext="Approved & completed"
+            icon={GitCommitIcon}
+          />
+        </div>
         <StatCard
           label="In Review"
           value={data.inReview}

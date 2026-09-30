@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { projectsApi } from '../../api/projects.api';
-import PageHeader from '../../components/developer/PageHeader';
 import EmptyState from '../../components/developer/EmptyState';
 import ErrorState from '../../components/developer/ErrorState';
 import TaskCard from '../../components/developer/TaskCard';
@@ -10,7 +9,6 @@ import {
   ChevronLeftIcon,
   TaskCheckIcon,
   GitCommitIcon,
-  UsersIcon,
   CodeIcon,
 } from '../../components/common/Icons';
 
@@ -28,48 +26,67 @@ export default function ProjectDetails({
   const [versions, setVersions] = useState([]);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'tasks' | 'versions' | 'code'
   const [projectCode, setProjectCode] = useState(null);
-  const [loading, setLoading] = useState(!initialProject);
+  const [loading, setLoading] = useState(!initialProject && Boolean(projectId));
   const [error, setError] = useState(null);
 
-  const fetchProjectData = async () => {
+  useEffect(() => {
     if (!projectId) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const [projData, taskData, versionData] = await Promise.all([
-        projectsApi.getProject(projectId).catch(() => initialProject),
-        projectsApi.getProjectTasks(projectId).catch(() => []),
-        projectsApi.getVersionHistory(projectId).catch(() => []),
-      ]);
+    let ignore = false;
 
-      if (projData) setProject(projData);
-      setTasks(Array.isArray(taskData) ? taskData : taskData?.tasks || []);
-      setVersions(Array.isArray(versionData) ? versionData : versionData?.versions || []);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
+    Promise.all([
+      projectsApi.getProject(projectId).catch(() => initialProject),
+      projectsApi.getProjectTasks(projectId).catch(() => []),
+      projectsApi.getVersionHistory(projectId).catch(() => []),
+    ])
+      .then(([projData, taskData, versionData]) => {
+        if (!ignore) {
+          if (projData) setProject(projData);
+          setTasks(Array.isArray(taskData) ? taskData : taskData?.tasks || []);
+          setVersions(Array.isArray(versionData) ? versionData : versionData?.versions || []);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [projectId, initialProject]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'code' && !projectCode && projectId) {
+      projectsApi.getProjectCode(projectId)
+        .then(setProjectCode)
+        .catch((err) => console.error('Failed to load project code:', err));
     }
   };
 
-  useEffect(() => {
-    fetchProjectData();
-  }, [projectId]);
-
-  const loadProjectCode = async () => {
-    try {
-      const code = await projectsApi.getProjectCode(projectId);
-      setProjectCode(code);
-    } catch (err) {
-      console.error('Failed to load project code:', err);
-    }
+  const refetch = () => {
+    if (!projectId) return;
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      projectsApi.getProject(projectId).catch(() => initialProject),
+      projectsApi.getProjectTasks(projectId).catch(() => []),
+      projectsApi.getVersionHistory(projectId).catch(() => []),
+    ])
+      .then(([projData, taskData, versionData]) => {
+        if (projData) setProject(projData);
+        setTasks(Array.isArray(taskData) ? taskData : taskData?.tasks || []);
+        setVersions(Array.isArray(versionData) ? versionData : versionData?.versions || []);
+      })
+      .catch(setError)
+      .finally(() => setLoading(false));
   };
-
-  useEffect(() => {
-    if (activeTab === 'code' && !projectCode) {
-      loadProjectCode();
-    }
-  }, [activeTab]);
 
   if (loading) {
     return (
@@ -93,7 +110,7 @@ export default function ProjectDetails({
         <ErrorState
           title="Project not found"
           message={error?.message || 'We could not locate this project.'}
-          onRetry={fetchProjectData}
+          onRetry={refetch}
         />
       </div>
     );
@@ -150,7 +167,7 @@ export default function ProjectDetails({
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-[#222222] pb-2 text-xs font-mono">
         <button
-          onClick={() => setActiveTab('overview')}
+          onClick={() => handleTabChange('overview')}
           className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab === 'overview'
               ? 'bg-white text-black font-bold'
@@ -160,7 +177,7 @@ export default function ProjectDetails({
           Overview & Team
         </button>
         <button
-          onClick={() => setActiveTab('tasks')}
+          onClick={() => handleTabChange('tasks')}
           className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab === 'tasks'
               ? 'bg-white text-black font-bold'
@@ -170,7 +187,7 @@ export default function ProjectDetails({
           Tasks ({tasks.length})
         </button>
         <button
-          onClick={() => setActiveTab('versions')}
+          onClick={() => handleTabChange('versions')}
           className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab === 'versions'
               ? 'bg-white text-black font-bold'
@@ -180,7 +197,7 @@ export default function ProjectDetails({
           Versions ({versions.length})
         </button>
         <button
-          onClick={() => setActiveTab('code')}
+          onClick={() => handleTabChange('code')}
           className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab === 'code'
               ? 'bg-white text-black font-bold'

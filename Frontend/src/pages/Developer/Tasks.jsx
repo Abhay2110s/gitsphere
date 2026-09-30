@@ -63,18 +63,28 @@ export default function Tasks({ onSelectTask, onOpenWorkspace }) {
         title="My Tasks"
         description="Assigned software tickets, bug fixes, and development objectives across all projects."
       >
-        {tasks.length > 0 && (
-          <div className="relative w-64">
-            <SearchIcon className="w-4 h-4 text-[#666666] absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#111111] border border-[#222222] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-[#666666] outline-none focus:border-white transition-colors"
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {tasks.length > 0 && (
+            <div className="relative w-64">
+              <SearchIcon className="w-4 h-4 text-[#666666] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-[#111111] border border-[#222222] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-[#666666] outline-none focus:border-white transition-colors"
+              />
+            </div>
+          )}
+          {onOpenWorkspace && (
+            <button
+              onClick={() => onOpenWorkspace()}
+              className="px-3 py-1.5 rounded-xl border border-[#2A2A2A] bg-[#141414] hover:bg-[#1E1E1E] text-white text-xs font-mono transition-colors cursor-pointer"
+            >
+              Open Workspace
+            </button>
+          )}
+        </div>
       </PageHeader>
 
       {/* Filter Tabs */}

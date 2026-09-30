@@ -48,12 +48,14 @@ export default function Dashboard({ onNavigateToProjects }) {
 
       {/* 2. Zero-State Statistics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Active Projects"
-          value={projects.length}
-          subtext="No activity yet"
-          icon={FolderIcon}
-        />
+        <div onClick={onNavigateToProjects} className={onNavigateToProjects ? 'cursor-pointer' : ''}>
+          <StatCard
+            label="Active Projects"
+            value={projects.length}
+            subtext="View projects"
+            icon={FolderIcon}
+          />
+        </div>
         <StatCard
           label="Pending Reviews"
           value={pendingReviews.length}
@@ -87,12 +89,17 @@ export default function Dashboard({ onNavigateToProjects }) {
                 {projects.length} Projects
               </p>
             </div>
-            <button
-              onClick={() => setIsCreateProjectOpen(true)}
-              className="text-xs font-mono font-bold text-white hover:underline cursor-pointer"
-            >
-              + Create Project
-            </button>
+            <div className="flex items-center gap-3">
+              {onNavigateToProjects && (
+                <button
+                  type="button"
+                  onClick={onNavigateToProjects}
+                  className="text-xs font-mono text-[#888888] hover:text-white transition-colors cursor-pointer"
+                >
+                  View All &rarr;
+                </button>
+              )}
+            </div>
           </div>
 
           {projects.length === 0 ? (
@@ -100,8 +107,6 @@ export default function Dashboard({ onNavigateToProjects }) {
               icon={FolderIcon}
               title="NO PROJECTS YET"
               description="Create your first project to start managing tasks, contributions, reviews, and your team."
-              actionLabel="+ Create Project"
-              onAction={() => setIsCreateProjectOpen(true)}
               className="border-0 bg-transparent py-8"
             />
           ) : (

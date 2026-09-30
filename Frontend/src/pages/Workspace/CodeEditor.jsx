@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import EmptyState from '../../components/workspace/EmptyState';
+import CodeMirrorEditor from '../../components/common/CodeMirrorEditor';
 import {
   FolderIcon,
   FileIcon,
@@ -7,16 +8,7 @@ import {
   SaveIcon,
   SendIcon,
   ChevronRightIcon,
-  ChevronDownIcon,
 } from '../../components/common/Icons';
-
-/** Lazy Monaco import to avoid SSR issues */
-let MonacoEditor = null;
-try {
-  MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
-} catch {
-  MonacoEditor = null;
-}
 
 function MiniFileTree({ files, selectedFile, onSelect }) {
   if (!files || files.length === 0) {
@@ -153,38 +145,12 @@ export default function CodeEditor({ files = [], loading }) {
                 <p className="text-xs text-[#555555] mt-1">Choose a file from the explorer panel</p>
               </div>
             </div>
-          ) : MonacoEditor ? (
-            <React.Suspense
-              fallback={
-                <div className="flex items-center justify-center h-full text-xs font-mono text-[#555555]">
-                  Loading editor...
-                </div>
-              }
-            >
-              <MonacoEditor
-                height="100%"
-                language={language}
-                value={code}
-                onChange={handleCodeChange}
-                theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  wordWrap: 'on',
-                  automaticLayout: true,
-                  padding: { top: 12 },
-                }}
-              />
-            </React.Suspense>
           ) : (
-            <textarea
+            <CodeMirrorEditor
               value={code}
-              onChange={(e) => handleCodeChange(e.target.value)}
-              className="w-full h-full p-4 bg-transparent text-white font-mono text-sm resize-none focus:outline-none"
-              spellCheck={false}
+              onChange={handleCodeChange}
+              language={language}
+              filename={selectedFile.name}
             />
           )}
         </div>

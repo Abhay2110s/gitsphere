@@ -19,34 +19,34 @@ import Messages from './Messages';
 import Notifications from './Notifications';
 import Settings from './Settings';
 
+function getSectionFromUrl(fallback = 'dashboard') {
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash.toLowerCase();
+    const path = window.location.pathname.toLowerCase();
+    const target = hash || path;
+
+    if (target.includes('project-details') || target.includes('projects/')) return 'project-details';
+    if (target.includes('project')) return 'projects';
+    if (target.includes('task-details') || target.includes('tasks/')) return 'task-details';
+    if (target.includes('task')) return 'tasks';
+    if (target.includes('workspace')) return 'workspace';
+    if (target.includes('code')) return 'code';
+    if (target.includes('contribution-details') || target.includes('contributions/')) return 'contribution-details';
+    if (target.includes('contribution')) return 'contributions';
+    if (target.includes('review-details') || target.includes('reviews/')) return 'review-details';
+    if (target.includes('review')) return 'reviews';
+    if (target.includes('message')) return 'messages';
+    if (target.includes('notification')) return 'notifications';
+    if (target.includes('setting')) return 'settings';
+  }
+  return fallback;
+}
+
 export default function DeveloperApp({ initialSection = 'dashboard', onNavigateToLanding }) {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
 
-  const getSectionFromUrl = () => {
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash.toLowerCase();
-      const path = window.location.pathname.toLowerCase();
-      const target = hash || path;
-
-      if (target.includes('project-details') || target.includes('projects/')) return 'project-details';
-      if (target.includes('project')) return 'projects';
-      if (target.includes('task-details') || target.includes('tasks/')) return 'task-details';
-      if (target.includes('task')) return 'tasks';
-      if (target.includes('workspace')) return 'workspace';
-      if (target.includes('code')) return 'code';
-      if (target.includes('contribution-details') || target.includes('contributions/')) return 'contribution-details';
-      if (target.includes('contribution')) return 'contributions';
-      if (target.includes('review-details') || target.includes('reviews/')) return 'review-details';
-      if (target.includes('review')) return 'reviews';
-      if (target.includes('message')) return 'messages';
-      if (target.includes('notification')) return 'notifications';
-      if (target.includes('setting')) return 'settings';
-    }
-    return initialSection;
-  };
-
-  const [currentSection, setCurrentSection] = useState(getSectionFromUrl);
+  const [currentSection, setCurrentSection] = useState(() => getSectionFromUrl(initialSection));
 
   // Selected item state for detail views
   const [selectedProject, setSelectedProject] = useState(null);
@@ -58,7 +58,7 @@ export default function DeveloperApp({ initialSection = 'dashboard', onNavigateT
   // Handle URL hash / history popstate
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentSection(getSectionFromUrl());
+      setCurrentSection(getSectionFromUrl(initialSection));
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -67,7 +67,7 @@ export default function DeveloperApp({ initialSection = 'dashboard', onNavigateT
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('hashchange', handlePopState);
     };
-  }, []);
+  }, [initialSection]);
 
   const handleNavigate = (sectionId, extra = null) => {
     setCurrentSection(sectionId);

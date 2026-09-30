@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import Editor from '@monaco-editor/react';
+import CodeMirrorEditor from '../../components/common/CodeMirrorEditor';
 import { useProjects } from '../../hooks/useProjects';
 import { useTasks } from '../../hooks/useTasks';
 import { tasksApi } from '../../api/tasks.api';
 import { workspaceApi } from '../../api/workspace.api';
 import { contributionsApi } from '../../api/contributions.api';
 import PageHeader from '../../components/developer/PageHeader';
-import EmptyState from '../../components/developer/EmptyState';
 import ErrorState from '../../components/developer/ErrorState';
 import {
   CodeIcon,
@@ -32,6 +31,16 @@ export default function DeveloperCodeEditor({
     initialTask?._id || initialTask?.id || ''
   );
 
+  const effectiveProjectId =
+    selectedProjectId || (projects.length > 0 ? projects[0]._id || projects[0].id : '');
+  const effectiveTaskId =
+    selectedTaskId ||
+    (tasks.length > 0
+      ? tasks.find((t) => (t.project?._id || t.project) === effectiveProjectId)?._id ||
+        tasks[0]._id ||
+        tasks[0].id
+      : '');
+
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(initialFile || null);
   const [editorCode, setEditorCode] = useState('');
@@ -52,56 +61,44 @@ export default function DeveloperCodeEditor({
   const [submittingContribution, setSubmittingContribution] = useState(false);
   const [contributionSuccess, setContributionSuccess] = useState(null);
 
-  // Auto-select first project/task
-  useEffect(() => {
-    if (!selectedProjectId && projects.length > 0) {
-      setSelectedProjectId(projects[0]._id || projects[0].id);
-    }
-  }, [projects, selectedProjectId]);
-
-  useEffect(() => {
-    if (!selectedTaskId && tasks.length > 0) {
-      const match = tasks.find(
-        (t) => t.project?._id === selectedProjectId || t.project === selectedProjectId
-      );
-      setSelectedTaskId(match ? match._id || match.id : tasks[0]._id || tasks[0].id);
-    }
-  }, [tasks, selectedProjectId, selectedTaskId]);
-
   // Fetch files when task changes
-  const fetchTaskFiles = async (taskId) => {
-    if (!taskId) return;
-    try {
-      setLoadingFiles(true);
-      setError(null);
-      const res = await tasksApi.getTaskFiles(taskId);
-      const list = Array.isArray(res) ? res : res?.files || [];
-      setFiles(list);
-      if (list.length > 0 && !selectedFile) {
-        setSelectedFile(list[0]);
-        setEditorCode(list[0].content || '');
-        setInitialCode(list[0].content || '');
-      }
-    } catch (err) {
-      setError(err);
-      setFiles([]);
-    } finally {
-      setLoadingFiles(false);
+  useEffect(() => {
+    if (!effectiveTaskId) {
+      return;
     }
+    let ignore = false;
+    tasksApi
+      .getTaskFiles(effectiveTaskId)
+      .then((res) => {
+        if (!ignore) {
+          const list = Array.isArray(res) ? res : res?.files || [];
+          setFiles(list);
+          if (list.length > 0) {
+            setSelectedFile(list[0]);
+            setEditorCode(list[0].content || '');
+            setInitialCode(list[0].content || '');
+          }
+          setLoadingFiles(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setFiles([]);
+          setLoadingFiles(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [effectiveTaskId]);
+
+  const handleSelectFile = (file) => {
+    setSelectedFile(file);
+    setEditorCode(file.content || '');
+    setInitialCode(file.content || '');
   };
-
-  useEffect(() => {
-    if (selectedTaskId) {
-      fetchTaskFiles(selectedTaskId);
-    }
-  }, [selectedTaskId]);
-
-  useEffect(() => {
-    if (selectedFile) {
-      setEditorCode(selectedFile.content || '');
-      setInitialCode(selectedFile.content || '');
-    }
-  }, [selectedFile]);
 
   // Save current file
   const handleSaveFile = async () => {
@@ -214,13 +211,13 @@ export default function DeveloperCodeEditor({
   return (
     <div className="space-y-6 animate-fade-in flex flex-col h-[calc(100vh-140px)] min-h-[600px]">
       <PageHeader
-        title="Monaco Code Editor"
+        title="GitSphere Code Editor"
         description="Collaborative code workspace with real-time editing, syntax highlighting, and contribution review lifecycle."
         actions={
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowNewFileModal(true)}
-              disabled={!selectedTaskId}
+              disabled={!effectiveTaskId}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#333333] hover:border-white text-xs font-bold text-white disabled:opacity-40 transition-colors cursor-pointer"
             >
               <PlusIcon className="w-3.5 h-3.5" />
@@ -252,7 +249,7 @@ export default function DeveloperCodeEditor({
 
             <button
               onClick={() => setShowSubmitModal(true)}
-              disabled={files.length === 0 || !selectedTaskId}
+              disabled={files.length === 0 || !effectiveTaskId}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-[#E5E5E5] disabled:opacity-40 transition-colors cursor-pointer shadow-sm"
             >
               <GitCommitIcon className="w-3.5 h-3.5" />
@@ -262,13 +259,33 @@ export default function DeveloperCodeEditor({
         }
       />
 
+      {/* Contribution Success Banner */}
+      {contributionSuccess && (
+        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/50 flex items-center justify-between text-xs text-emerald-400 font-mono animate-fade-in">
+          <div className="flex items-center gap-2">
+            <CheckIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Contribution submitted successfully! Assigned manager will review your changes.</span>
+          </div>
+          <button
+            onClick={() => setContributionSuccess(null)}
+            className="p-1 hover:text-white transition-colors cursor-pointer"
+          >
+            <CloseIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Selectors Bar */}
       <div className="p-3 rounded-xl border border-[#222222] bg-[#0A0A0A] flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 text-xs font-mono">
           <span className="text-[#666666]">Repo:</span>
           <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
+            value={effectiveProjectId}
+            onChange={(e) => {
+              setSelectedProjectId(e.target.value);
+              setSelectedTaskId('');
+              setSelectedFile(null);
+            }}
             className="bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded-lg px-2.5 py-1 outline-none cursor-pointer"
           >
             {projects.length === 0 ? (
@@ -286,8 +303,11 @@ export default function DeveloperCodeEditor({
         <div className="flex items-center gap-2 text-xs font-mono">
           <span className="text-[#666666]">Task:</span>
           <select
-            value={selectedTaskId}
-            onChange={(e) => setSelectedTaskId(e.target.value)}
+            value={effectiveTaskId}
+            onChange={(e) => {
+              setSelectedTaskId(e.target.value);
+              setSelectedFile(null);
+            }}
             className="bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded-lg px-2.5 py-1 outline-none cursor-pointer"
           >
             {tasks.length === 0 ? (
@@ -336,7 +356,12 @@ export default function DeveloperCodeEditor({
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {files.length === 0 ? (
+            {loadingFiles ? (
+              <div className="p-4 text-center">
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-[11px] font-mono text-[#666666]">Loading files...</p>
+              </div>
+            ) : files.length === 0 ? (
               <p className="text-[11px] font-mono text-[#555555] p-3 text-center">
                 No files in this task.
               </p>
@@ -349,11 +374,7 @@ export default function DeveloperCodeEditor({
                 return (
                   <button
                     key={file._id || file.id || file.name}
-                    onClick={() => {
-                      setSelectedFile(file);
-                      setEditorCode(file.content || '');
-                      setInitialCode(file.content || '');
-                    }}
+                    onClick={() => handleSelectFile(file)}
                     className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-white text-black font-bold'
@@ -371,12 +392,12 @@ export default function DeveloperCodeEditor({
           </div>
         </div>
 
-        {/* Center: Monaco Editor Container */}
-        <div className="flex-1 flex flex-col bg-[#1E1E1E]">
+        {/* Center: CodeMirror Editor Container */}
+        <div className="flex-1 flex flex-col bg-[#0A0A0A]">
           {selectedFile ? (
             <>
               {/* Tab Header */}
-              <div className="h-9 bg-[#181818] border-b border-[#282828] px-4 flex items-center justify-between text-xs font-mono">
+              <div className="h-9 bg-[#141414] border-b border-[#222222] px-4 flex items-center justify-between text-xs font-mono">
                 <span className="text-white font-semibold">
                   {selectedFile.path || selectedFile.name}
                 </span>
@@ -393,23 +414,13 @@ export default function DeveloperCodeEditor({
                 </div>
               </div>
 
-              {/* Monaco Editor Component */}
-              <div className="flex-1">
-                <Editor
-                  height="100%"
-                  theme="vs-dark"
-                  language={selectedFile.language || 'javascript'}
+              {/* CodeMirror Component */}
+              <div className="flex-1 h-full min-h-0">
+                <CodeMirrorEditor
                   value={editorCode}
-                  onChange={(val) => setEditorCode(val || '')}
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 13,
-                    fontFamily: 'JetBrains Mono, Menlo, monospace',
-                    lineNumbers: 'on',
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    tabSize: 2,
-                  }}
+                  onChange={(val) => setEditorCode(val)}
+                  filename={selectedFile.path || selectedFile.name}
+                  language={selectedFile.language || 'javascript'}
                 />
               </div>
             </>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GitSphereLogo, ArrowRightIcon } from '../../components/common/Icons';
+import { authApi } from '../../api/auth.api';
 
 // Arrow Left Icon
 function ArrowLeftIcon({ className = "w-3.5 h-3.5" }) {
@@ -18,7 +19,7 @@ export default function OtpVerificationPage({
   onNavigateToLanding,
 }) {
   // Resolve effective email from props or local storage
-  const effectiveEmail = React.useMemo(() => {
+  const effectiveEmail = (() => {
     if (userEmail && userEmail.trim()) return userEmail.trim();
     if (typeof window !== 'undefined') {
       const stored =
@@ -36,7 +37,7 @@ export default function OtpVerificationPage({
       }
     }
     return '';
-  }, [userEmail]);
+  })();
 
   // 6 digits state
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
@@ -45,6 +46,7 @@ export default function OtpVerificationPage({
   // States: 'idle' | 'verifying' | 'error' | 'success'
   const [status, setStatus] = useState('idle');
   const [statusMessage, setStatusMessage] = useState('');
+  const [verifiedUser, setVerifiedUser] = useState(null);
 
   // Countdown timer: 45 seconds initial
   const [timeLeft, setTimeLeft] = useState(45);
@@ -89,6 +91,18 @@ export default function OtpVerificationPage({
     }, 1000);
     return () => clearInterval(timer);
   }, [timeLeft]);
+
+  // Auto-navigate upon verification success
+  useEffect(() => {
+    if (status === 'success') {
+      const timer = setTimeout(() => {
+        if (onVerificationComplete) {
+          onVerificationComplete(verifiedUser);
+        }
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [status, onVerificationComplete, verifiedUser]);
 
   // Format seconds to mm:ss
   const formatTimer = (seconds) => {
@@ -182,31 +196,13 @@ export default function OtpVerificationPage({
     setStatusMessage('');
 
     try {
-      const response = await fetch('/api/v1/auth/verify-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: effectiveEmail,
-          otp: code,
-        }),
+      const res = await authApi.verifyOtp({
+        email: effectiveEmail,
+        otp: code,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Invalid verification code');
-      }
-
-      if (data.token) {
-        localStorage.setItem('gitsphere_token', data.token);
-      }
-      if (data.user) {
-        localStorage.setItem('gitsphere_user', JSON.stringify(data.user));
-      }
-
+      const u = res?.data?.user || res?.user;
+      setVerifiedUser(u);
       setStatus('success');
     } catch (err) {
       setStatus('error');
@@ -234,22 +230,7 @@ export default function OtpVerificationPage({
     setResendNotification('Sending new code...');
 
     try {
-      const response = await fetch('/api/v1/auth/resend-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: effectiveEmail,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to resend code');
-      }
+      await authApi.resendOtp(effectiveEmail);
 
       setIsResending(false);
       setTimeLeft(45);
@@ -480,7 +461,7 @@ export default function OtpVerificationPage({
             <button
               type="button"
               onClick={() => {
-                if (onVerificationComplete) onVerificationComplete();
+                if (onVerificationComplete) onVerificationComplete(verifiedUser);
                 else if (onNavigateToLanding) onNavigateToLanding();
                 else window.location.href = '/';
               }}

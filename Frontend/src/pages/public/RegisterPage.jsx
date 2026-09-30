@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { GitSphereLogo, ArrowRightIcon } from '../../components/common/Icons';
+import { authApi } from '../../api/auth.api';
 
 // Eye toggle icons for show/hide password
 function EyeIcon({ className = "w-4 h-4" }) {
@@ -82,36 +83,23 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
     setFlowState('creating');
 
     try {
-      const response = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: trimmedName,
-          email: trimmedEmail,
-          password: password,
-          role: role,
-        }),
+      const res = await authApi.register({
+        name: trimmedName,
+        email: trimmedEmail,
+        password: password,
+        role: role,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed. Please try again.');
-      }
-
-      if (data.token) {
-        localStorage.setItem('gitsphere_token', data.token);
-      }
-      if (data.user) {
-        localStorage.setItem('gitsphere_user', JSON.stringify(data.user));
-        setRegisteredUser(data.user);
-      }
+      const user = res.data?.user || res.user || {
+        name: trimmedName,
+        email: trimmedEmail,
+        role: role,
+      };
+      setRegisteredUser(user);
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('gitsphere_verification_email', trimmedEmail);
+        localStorage.removeItem('gitsphere_otp_purpose');
       }
 
       setTimeout(() => {
@@ -124,29 +112,9 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
       }, 700);
 
     } catch (err) {
-      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        // Fallback for offline/mock dev demo
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('gitsphere_verification_email', trimmedEmail);
-        }
-        setRegisteredUser({
-          name: trimmedName,
-          email: trimmedEmail,
-          role: role,
-        });
-        setTimeout(() => {
-          if (onNavigateToOtp) {
-            onNavigateToOtp(trimmedEmail);
-          } else {
-            setFlowState('verify');
-          }
-          setIsSubmitting(false);
-        }, 700);
-      } else {
-        setFlowState('form');
-        setIsSubmitting(false);
-        setErrorMessage(err.message || 'Failed to create account.');
-      }
+      setFlowState('form');
+      setIsSubmitting(false);
+      setErrorMessage(err.message || 'Failed to create account.');
     }
   };
 
@@ -179,7 +147,7 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
     }
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     const entered = otpCode.join('');
     if (entered.length < 6) {
@@ -187,11 +155,17 @@ export default function RegisterPage({ onNavigateToLogin, onNavigateToOtp, onNav
       return;
     }
     setErrorMessage('');
-    setFlowState('success');
-    setTimeout(() => {
-      if (onLoginSuccess) onLoginSuccess();
-      else if (onNavigateToLanding) onNavigateToLanding();
-    }, 900);
+    try {
+      const res = await authApi.verifyOtp({ email: email.trim().toLowerCase(), otp: entered });
+      const user = res?.data?.user || res?.user || registeredUser;
+      setFlowState('success');
+      setTimeout(() => {
+        if (onLoginSuccess) onLoginSuccess(user);
+        else if (onNavigateToLanding) onNavigateToLanding();
+      }, 900);
+    } catch (err) {
+      setErrorMessage(err.message || 'Invalid verification code.');
+    }
   };
 
   return (

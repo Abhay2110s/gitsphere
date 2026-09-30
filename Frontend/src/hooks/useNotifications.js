@@ -3,22 +3,20 @@ import { notificationsApi } from '../api/notifications.api';
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
       const res = await notificationsApi.getNotifications();
       const list = Array.isArray(res) ? res : res?.notifications || [];
       setNotifications(list);
-      setUnreadCount(list.filter((n) => !n.isRead).length);
     } catch (err) {
       setError(err);
       setNotifications([]);
-      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -30,7 +28,6 @@ export function useNotifications() {
       setNotifications((prev) =>
         prev.map((n) => (n._id === id || n.id === id ? { ...n, isRead: true } : n))
       );
-      setUnreadCount((c) => Math.max(0, c - 1));
     } catch (err) {
       console.error('Failed to mark notification as read:', err);
     }
@@ -40,15 +37,33 @@ export function useNotifications() {
     try {
       await notificationsApi.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
     } catch (err) {
       console.error('Failed to mark all as read:', err);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    let ignore = false;
+    notificationsApi.getNotifications()
+      .then((res) => {
+        if (!ignore) {
+          const list = Array.isArray(res) ? res : res?.notifications || [];
+          setNotifications(list);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setNotifications([]);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return {
     notifications,

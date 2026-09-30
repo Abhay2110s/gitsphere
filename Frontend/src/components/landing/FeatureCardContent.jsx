@@ -54,6 +54,11 @@ export function FeatureCardShell({
           
           {/* Left Side: Headline, Copy & Metrics/Actions */}
           <div className="lg:col-span-5 flex flex-col justify-center text-left">
+            {category && (
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#777777] mb-2 block">
+                {category}
+              </span>
+            )}
             <h3 className={`text-3xl sm:text-4xl lg:text-[44px] xl:text-[50px] font-black tracking-tight leading-[1.06] ${numClass}`}>
               {title}
               {subtitle && (

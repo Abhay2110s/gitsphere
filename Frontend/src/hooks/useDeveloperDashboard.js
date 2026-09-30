@@ -18,9 +18,9 @@ export function useDeveloperDashboard() {
   const [error, setError] = useState(null);
 
   const fetchDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
       const res = await dashboardApi.getUserDashboard();
       if (res) {
         setData({
@@ -44,8 +44,36 @@ export function useDeveloperDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    let ignore = false;
+    dashboardApi.getUserDashboard()
+      .then((res) => {
+        if (!ignore && res) {
+          setData({
+            assignedTasks: Number(res.assignedTasks || 0),
+            inProgress: Number(res.inProgress || 0),
+            inReview: Number(res.inReview || 0),
+            completed: Number(res.completed || 0),
+            todo: Number(res.todo || 0),
+            overdue: Number(res.overdue || 0),
+            recentProjects: Array.isArray(res.recentProjects) ? res.recentProjects : [],
+            recentNotifications: Array.isArray(res.recentNotifications) ? res.recentNotifications : [],
+            unreadNotificationsCount: Number(res.unreadNotificationsCount || 0),
+            recentActivity: Array.isArray(res.recentActivity) ? res.recentActivity : [],
+          });
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return {
     data,

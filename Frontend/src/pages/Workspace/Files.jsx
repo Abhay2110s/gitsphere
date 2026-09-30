@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import EmptyState from '../../components/workspace/EmptyState';
 import { TableSkeleton } from '../../components/workspace/SkeletonLoaders';
 import {
@@ -7,70 +7,12 @@ import {
   SearchIcon,
   PlusIcon,
   ChevronRightIcon,
-  ChevronDownIcon,
   CodeIcon,
   TrashIcon,
-  EditIcon,
   DownloadIcon,
 } from '../../components/common/Icons';
 
-function getFileTypeIcon(name) {
-  if (!name) return FileIcon;
-  const ext = name.split('.').pop()?.toLowerCase();
-  const codeExts = ['js', 'jsx', 'ts', 'tsx', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'rb', 'php', 'css', 'html', 'json', 'xml', 'yaml', 'yml'];
-  if (codeExts.includes(ext)) return CodeIcon;
-  return FileIcon;
-}
-
-function FileTreeNode({ node, depth = 0, onSelect, selectedId }) {
-  const [expanded, setExpanded] = useState(false);
-  const isFolder = node.type === 'folder' || (node.children && node.children.length > 0);
-  const isSelected = selectedId === node._id;
-  const Icon = isFolder ? FolderIcon : getFileTypeIcon(node.name);
-
-  return (
-    <div>
-      <button
-        onClick={() => {
-          if (isFolder) {
-            setExpanded(!expanded);
-          } else {
-            onSelect?.(node);
-          }
-        }}
-        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-mono rounded-lg transition-colors cursor-pointer ${
-          isSelected
-            ? 'bg-[#1A1A1A] text-white border border-[#333333]'
-            : 'text-[#888888] hover:text-white hover:bg-[#0F0F0F]'
-        }`}
-        style={{ paddingLeft: `${12 + depth * 16}px` }}
-      >
-        {isFolder && (
-          expanded
-            ? <ChevronDownIcon className="w-3 h-3 text-[#555555] shrink-0" />
-            : <ChevronRightIcon className="w-3 h-3 text-[#555555] shrink-0" />
-        )}
-        <Icon className="w-3.5 h-3.5 shrink-0" />
-        <span className="truncate">{node.name}</span>
-      </button>
-      {isFolder && expanded && node.children && (
-        <div>
-          {node.children.map((child, i) => (
-            <FileTreeNode
-              key={child._id || i}
-              node={child}
-              depth={depth + 1}
-              onSelect={onSelect}
-              selectedId={selectedId}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function Files({ files = [], loading, error, onNavigate, userRole }) {
+export default function Files({ files = [], loading, onNavigate, userRole }) {
   const [search, setSearch] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
 

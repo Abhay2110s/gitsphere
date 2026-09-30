@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { reviewsApi } from '../../api/reviews.api';
-import PageHeader from '../../components/developer/PageHeader';
 import ErrorState from '../../components/developer/ErrorState';
-import { ChevronLeftIcon, GitPullRequestIcon } from '../../components/common/Icons';
+import { ChevronLeftIcon, GitPullRequestIcon, TerminalIcon } from '../../components/common/Icons';
 
 export default function ReviewDetails({
   reviewId: propId,
@@ -12,25 +11,33 @@ export default function ReviewDetails({
 }) {
   const reviewId = initialReview?._id || initialReview?.id || propId;
   const [review, setReview] = useState(initialReview || null);
-  const [loading, setLoading] = useState(!initialReview);
+  const [loading, setLoading] = useState(!initialReview && Boolean(reviewId));
   const [error, setError] = useState(null);
 
-  const fetchReview = async () => {
-    if (!reviewId) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await reviewsApi.getReviewById(reviewId);
-      if (res) setReview(res);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchReview();
+    if (!reviewId) return;
+    let ignore = false;
+
+    reviewsApi.getReviewById(reviewId)
+      .then((res) => {
+        if (!ignore && res) {
+          setReview(res);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [reviewId]);
 
   if (loading) {
@@ -55,7 +62,15 @@ export default function ReviewDetails({
         <ErrorState
           title="Review not found"
           message={error?.message || 'We could not fetch this review.'}
-          onRetry={fetchReview}
+          onRetry={() => {
+            if (!reviewId) return;
+            setLoading(true);
+            setError(null);
+            reviewsApi.getReviewById(reviewId)
+              .then(setReview)
+              .catch(setError)
+              .finally(() => setLoading(false));
+          }}
         />
       </div>
     );
@@ -92,15 +107,26 @@ export default function ReviewDetails({
             </div>
           </div>
 
-          <span
-            className={`text-xs font-mono font-bold px-3 py-1 rounded border bg-[#141414] ${
-              isApproved
-                ? 'border-[#555555] text-white'
-                : 'border-amber-900/60 text-amber-400'
-            } shrink-0 uppercase self-start`}
-          >
-            {review.status || 'IN_REVIEW'}
-          </span>
+          <div className="flex items-center gap-3 shrink-0 self-start">
+            {onOpenWorkspace && (
+              <button
+                onClick={onOpenWorkspace}
+                className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#161616] hover:bg-[#202020] border border-[#2E2E2E] text-white text-xs font-mono transition-colors cursor-pointer"
+              >
+                <TerminalIcon className="w-3.5 h-3.5" />
+                <span>Workspace</span>
+              </button>
+            )}
+            <span
+              className={`text-xs font-mono font-bold px-3 py-1 rounded border bg-[#141414] ${
+                isApproved
+                  ? 'border-[#555555] text-white'
+                  : 'border-amber-900/60 text-amber-400'
+              } uppercase`}
+            >
+              {review.status || 'IN_REVIEW'}
+            </span>
+          </div>
         </div>
 
         {/* Review Comments */}

@@ -7,9 +7,9 @@ export function useTasks() {
   const [error, setError] = useState(null);
 
   const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
       const res = await tasksApi.getMyTasks();
       setTasks(Array.isArray(res) ? res : res?.tasks || []);
     } catch (err) {
@@ -21,20 +21,34 @@ export function useTasks() {
   }, []);
 
   const updateTaskStatus = async (taskId, newStatus) => {
-    try {
-      const updated = await tasksApi.updateTaskStatus(taskId, newStatus);
-      setTasks((prev) =>
-        prev.map((t) => (t._id === taskId || t.id === taskId ? { ...t, status: newStatus } : t))
-      );
-      return updated;
-    } catch (err) {
-      throw err;
-    }
+    const updated = await tasksApi.updateTaskStatus(taskId, newStatus);
+    setTasks((prev) =>
+      prev.map((t) => (t._id === taskId || t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+    return updated;
   };
 
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    let ignore = false;
+    tasksApi.getMyTasks()
+      .then((res) => {
+        if (!ignore) {
+          setTasks(Array.isArray(res) ? res : res?.tasks || []);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setTasks([]);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return {
     tasks,

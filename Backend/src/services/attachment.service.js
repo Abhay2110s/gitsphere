@@ -132,3 +132,70 @@ export const deleteAttachment = async (attachmentId, user) => {
   await FileAttachment.findByIdAndDelete(attachmentId);
   return { message: 'Attachment deleted successfully' };
 };
+
+/**
+ * Get attachment metadata by ID with authorization check
+ */
+export const getAttachmentById = async (attachmentId, user) => {
+  if (!mongoose.Types.ObjectId.isValid(attachmentId)) {
+    throw new AppError('Invalid Attachment ID format', 400, 'INVALID_ID');
+  }
+
+  const attachment = await FileAttachment.findById(attachmentId)
+    .populate('uploadedBy', 'name email avatar')
+    .populate('project', 'name members createdBy')
+    .populate('task', 'title');
+
+  if (!attachment) {
+    throw new AppError('Attachment not found', 404, 'NOT_FOUND');
+  }
+
+  if (attachment.project && !hasProjectAccess(attachment.project, user)) {
+    throw new AppError('Access denied to this attachment', 403, 'FORBIDDEN');
+  }
+
+  return attachment;
+};
+
+/**
+ * Get attachment file descriptor for download/streaming with strict authorization and path traversal protection
+ */
+export const getAttachmentFile = async (attachmentId, user) => {
+  if (!mongoose.Types.ObjectId.isValid(attachmentId)) {
+    throw new AppError('Invalid Attachment ID format', 400, 'INVALID_ID');
+  }
+
+  const attachment = await FileAttachment.findById(attachmentId).populate('project');
+  if (!attachment) {
+    throw new AppError('Attachment not found', 404, 'NOT_FOUND');
+  }
+
+  // Authorization: check project membership or uploader ownership
+  if (attachment.project) {
+    if (!hasProjectAccess(attachment.project, user)) {
+      throw new AppError('Access denied. You do not have permission to access this attachment.', 403, 'FORBIDDEN');
+    }
+  } else if (!attachment.uploadedBy.equals(user._id) && user.role !== 'MANAGER') {
+    throw new AppError('Access denied to this attachment', 403, 'FORBIDDEN');
+  }
+
+  // Path traversal protection
+  const safeFilename = path.basename(attachment.storageKey);
+  const resolvedPath = path.resolve(uploadsDir, safeFilename);
+
+  if (!resolvedPath.startsWith(path.resolve(uploadsDir))) {
+    throw new AppError('Invalid file path', 400, 'INVALID_PATH');
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
+    throw new AppError('File not found on storage', 404, 'FILE_NOT_FOUND');
+  }
+
+  return {
+    filePath: resolvedPath,
+    mimeType: attachment.mimeType || 'application/octet-stream',
+    originalName: attachment.originalName || safeFilename,
+    size: attachment.size
+  };
+};
+

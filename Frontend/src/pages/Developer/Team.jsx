@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import StatCard from '../../components/manager/StatCard';
 import EmptyState from '../../components/manager/EmptyState';
 import { UsersIcon } from '../../components/common/Icons';
 
 export default function Team() {
-  const [teamMembers] = useState([]); // dynamic empty array
 
   return (
     <div className="space-y-8 animate-fade-in">

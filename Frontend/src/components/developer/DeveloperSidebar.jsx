@@ -14,7 +14,7 @@ import {
   CloseIcon,
 } from '../common/Icons';
 
-export const DEVELOPER_NAV_ITEMS = [
+const DEVELOPER_NAV_ITEMS = [
   { id: 'dashboard', name: 'Dashboard', icon: ActivityIcon, path: '/developer' },
   { id: 'projects', name: 'Projects', icon: FolderIcon, path: '/developer/projects' },
   { id: 'tasks', name: 'Tasks', icon: TaskCheckIcon, path: '/developer/tasks' },

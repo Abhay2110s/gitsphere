@@ -12,9 +12,9 @@ export function useReviews(taskId = null) {
       setReviews([]);
       return;
     }
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
       const res = await reviewsApi.getTaskReviews(targetTaskId);
       setReviews(Array.isArray(res) ? res : res?.reviews || []);
     } catch (err) {
@@ -26,10 +26,29 @@ export function useReviews(taskId = null) {
   }, [taskId]);
 
   useEffect(() => {
-    if (taskId) {
-      fetchReviews(taskId);
+    if (!taskId) {
+      return;
     }
-  }, [taskId, fetchReviews]);
+    let ignore = false;
+    reviewsApi.getTaskReviews(taskId)
+      .then((res) => {
+        if (!ignore) {
+          setReviews(Array.isArray(res) ? res : res?.reviews || []);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setReviews([]);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [taskId]);
 
   return {
     reviews,

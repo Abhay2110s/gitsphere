@@ -7,9 +7,9 @@ export function useAuth() {
   const [error, setError] = useState(null);
 
   const fetchUser = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
       const data = await authApi.getMe();
       setUser(data);
     } catch (err) {
@@ -21,7 +21,21 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
-    fetchUser();
+    let ignore = false;
+    authApi.getMe()
+      .then((data) => {
+        if (!ignore) {
+          setUser(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setUser(null);
+          setError(err);
+          setLoading(false);
+        }
+      });
 
     const handleUnauthorized = () => {
       setUser(null);
@@ -29,9 +43,10 @@ export function useAuth() {
 
     window.addEventListener('gitsphere:unauthorized', handleUnauthorized);
     return () => {
+      ignore = true;
       window.removeEventListener('gitsphere:unauthorized', handleUnauthorized);
     };
-  }, [fetchUser]);
+  }, []);
 
   const logout = async () => {
     try {

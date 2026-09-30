@@ -7,18 +7,19 @@ export function useMessages(channelType = 'project', channelId = null) {
   const [error, setError] = useState(null);
 
   const fetchMessages = useCallback(async (id = channelId) => {
-    if (!id) {
+    const targetId = id || channelId;
+    if (!targetId) {
       setMessages([]);
       return;
     }
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
       let res;
       if (channelType === 'project') {
-        res = await messagesApi.getProjectMessages(id);
+        res = await messagesApi.getProjectMessages(targetId);
       } else {
-        res = await messagesApi.getTaskMessages(id);
+        res = await messagesApi.getTaskMessages(targetId);
       }
       setMessages(Array.isArray(res) ? res : res?.messages || []);
     } catch (err) {
@@ -30,10 +31,33 @@ export function useMessages(channelType = 'project', channelId = null) {
   }, [channelType, channelId]);
 
   useEffect(() => {
-    if (channelId) {
-      fetchMessages(channelId);
+    if (!channelId) {
+      return;
     }
-  }, [channelId, fetchMessages]);
+    let ignore = false;
+    const fetcher = channelType === 'project'
+      ? messagesApi.getProjectMessages(channelId)
+      : messagesApi.getTaskMessages(channelId);
+
+    fetcher
+      .then((res) => {
+        if (!ignore) {
+          setMessages(Array.isArray(res) ? res : res?.messages || []);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setMessages([]);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [channelId, channelType]);
 
   const sendMessage = async (content) => {
     if (!channelId || !content.trim()) return;

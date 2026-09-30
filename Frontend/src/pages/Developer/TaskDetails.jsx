@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { tasksApi } from '../../api/tasks.api';
 import TaskStatusBadge from '../../components/developer/TaskStatusBadge';
-import PageHeader from '../../components/developer/PageHeader';
-import EmptyState from '../../components/developer/EmptyState';
 import ErrorState from '../../components/developer/ErrorState';
-import { ChevronLeftIcon, LayersIcon, CodeIcon, GitPullRequestIcon } from '../../components/common/Icons';
+import { ChevronLeftIcon, LayersIcon, CodeIcon } from '../../components/common/Icons';
 
 export default function TaskDetails({
   taskId: propTaskId,
@@ -15,27 +13,45 @@ export default function TaskDetails({
 }) {
   const taskId = initialTask?._id || initialTask?.id || propTaskId;
   const [task, setTask] = useState(initialTask || null);
-  const [loading, setLoading] = useState(!initialTask);
+  const [loading, setLoading] = useState(!initialTask && Boolean(taskId));
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
 
-  const fetchTask = async () => {
-    if (!taskId) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await tasksApi.getTaskById(taskId);
-      if (res) setTask(res);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchTask();
+    if (!taskId) return;
+    let ignore = false;
+
+    tasksApi.getTaskById(taskId)
+      .then((res) => {
+        if (!ignore && res) {
+          setTask(res);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [taskId]);
+
+  const refetch = () => {
+    if (!taskId) return;
+    setLoading(true);
+    setError(null);
+    tasksApi.getTaskById(taskId)
+      .then(setTask)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  };
 
   const handleStatusChange = async (newStatus) => {
     if (!task) return;
@@ -72,7 +88,7 @@ export default function TaskDetails({
         <ErrorState
           title="Task not found"
           message={error?.message || 'We could not load this task.'}
-          onRetry={fetchTask}
+          onRetry={refetch}
         />
       </div>
     );

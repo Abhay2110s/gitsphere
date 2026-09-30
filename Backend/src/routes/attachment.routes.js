@@ -13,6 +13,13 @@ router.post('/upload', upload.single('file'), attachmentController.uploadAttachm
 // Get attachments
 router.get('/', attachmentController.getAttachments);
 
+// Get attachment details
+router.get('/:id', attachmentController.getAttachmentById);
+
+// Download/stream attachment file with auth & project check
+router.get('/:id/download', attachmentController.downloadAttachment);
+router.get('/:id/file', attachmentController.downloadAttachment);
+
 // Delete attachment
 router.delete('/:id', attachmentController.deleteAttachment);
 

@@ -12,9 +12,9 @@ export function useContributions(projectId = null) {
       setContributions([]);
       return;
     }
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
       const res = await contributionsApi.getContributions(targetProject);
       setContributions(Array.isArray(res) ? res : res?.contributions || []);
     } catch (err) {
@@ -26,10 +26,29 @@ export function useContributions(projectId = null) {
   }, [projectId]);
 
   useEffect(() => {
-    if (projectId) {
-      fetchContributions(projectId);
+    if (!projectId) {
+      return;
     }
-  }, [projectId, fetchContributions]);
+    let ignore = false;
+    contributionsApi.getContributions(projectId)
+      .then((res) => {
+        if (!ignore) {
+          setContributions(Array.isArray(res) ? res : res?.contributions || []);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+          setContributions([]);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [projectId]);
 
   const submitContribution = async (data) => {
     const res = await contributionsApi.createContribution(data);

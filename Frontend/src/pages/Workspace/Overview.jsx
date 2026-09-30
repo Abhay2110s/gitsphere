@@ -24,6 +24,18 @@ export default function Overview({
 }) {
   if (loading) return <PageSkeleton />;
 
+  if (error || !project) {
+    return (
+      <EmptyState
+        icon={FolderIcon}
+        title={error ? "Unable to load project" : "No project selected"}
+        description={error || "Select a project to view its workspace overview."}
+        actionLabel="Go to Dashboard"
+        onAction={() => onNavigate?.('overview')}
+      />
+    );
+  }
+
   const formatDate = (d) => {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-US', {

@@ -7,7 +7,6 @@ import {
   GitCommitIcon,
   GitPullRequestIcon,
   UsersIcon,
-  FolderIcon,
   TagIcon,
   FileIcon,
   MessageIcon,

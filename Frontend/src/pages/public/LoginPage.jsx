@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GitSphereLogo, ArrowRightIcon } from '../../components/common/Icons';
+import { authApi } from '../../api/auth.api';
 
 // Eye toggle icons for show/hide password
 function EyeIcon({ className = "w-4 h-4" }) {
@@ -43,49 +44,21 @@ export default function LoginPage({ onNavigateToRegister, onNavigateToForgotPass
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: trimmedEmail,
-          password: password,
-        }),
+      const res = await authApi.login({
+        email: trimmedEmail,
+        password: password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Invalid email or password.');
-      }
-
-      if (data.token) {
-        localStorage.setItem('gitsphere_token', data.token);
-      }
-      if (data.user) {
-        localStorage.setItem('gitsphere_user', JSON.stringify(data.user));
-      }
+      const user = res?.data?.user || res?.user;
 
       setIsSuccess(true);
       setTimeout(() => {
-        if (onLoginSuccess) onLoginSuccess();
+        if (onLoginSuccess) onLoginSuccess(user);
         else if (onNavigateToLanding) onNavigateToLanding();
       }, 700);
-
     } catch (err) {
-      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        // Fallback for offline/mock demo environment
-        setIsSuccess(true);
-        setTimeout(() => {
-          if (onLoginSuccess) onLoginSuccess();
-          else if (onNavigateToLanding) onNavigateToLanding();
-        }, 700);
-      } else {
-        setIsLoading(false);
-        setErrorMessage(err.message || 'Invalid email or password.');
-      }
+      setIsLoading(false);
+      setErrorMessage(err.message || 'Invalid email or password.');
     }
   };
 

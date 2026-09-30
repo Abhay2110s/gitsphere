@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { contributionsApi } from '../../api/contributions.api';
-import PageHeader from '../../components/developer/PageHeader';
-import EmptyState from '../../components/developer/EmptyState';
 import ErrorState from '../../components/developer/ErrorState';
-import { ChevronLeftIcon, GitCommitIcon, CodeIcon } from '../../components/common/Icons';
+import { ChevronLeftIcon, GitCommitIcon, TerminalIcon } from '../../components/common/Icons';
 
 export default function ContributionDetails({
   contributionId: propId,
@@ -13,25 +11,33 @@ export default function ContributionDetails({
 }) {
   const contributionId = initialContrib?._id || initialContrib?.id || propId;
   const [contribution, setContribution] = useState(initialContrib || null);
-  const [loading, setLoading] = useState(!initialContrib);
+  const [loading, setLoading] = useState(!initialContrib && Boolean(contributionId));
   const [error, setError] = useState(null);
 
-  const fetchContribution = async () => {
-    if (!contributionId) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await contributionsApi.getContributionById(contributionId);
-      if (res) setContribution(res);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchContribution();
+    if (!contributionId) return;
+    let ignore = false;
+
+    contributionsApi.getContributionById(contributionId)
+      .then((res) => {
+        if (!ignore && res) {
+          setContribution(res);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [contributionId]);
 
   if (loading) {
@@ -56,7 +62,14 @@ export default function ContributionDetails({
         <ErrorState
           title="Contribution not found"
           message={error?.message || 'We could not load this contribution record.'}
-          onRetry={fetchContribution}
+          onRetry={() => {
+            setLoading(true);
+            setError(null);
+            contributionsApi.getContributionById(contributionId)
+              .then(setContribution)
+              .catch(setError)
+              .finally(() => setLoading(false));
+          }}
         />
       </div>
     );
@@ -97,9 +110,20 @@ export default function ContributionDetails({
             </div>
           </div>
 
-          <span className="text-xs font-mono font-bold px-3 py-1 rounded border bg-[#141414] border-[#444444] text-white shrink-0 uppercase self-start">
-            {contribution.status || 'IN_REVIEW'}
-          </span>
+          <div className="flex items-center gap-3 shrink-0 self-start">
+            {onOpenWorkspace && (
+              <button
+                onClick={onOpenWorkspace}
+                className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#161616] hover:bg-[#202020] border border-[#2E2E2E] text-white text-xs font-mono transition-colors cursor-pointer"
+              >
+                <TerminalIcon className="w-3.5 h-3.5" />
+                <span>Workspace</span>
+              </button>
+            )}
+            <span className="text-xs font-mono font-bold px-3 py-1 rounded border bg-[#141414] border-[#444444] text-white uppercase">
+              {contribution.status || 'IN_REVIEW'}
+            </span>
+          </div>
         </div>
 
         {/* Metadata Details */}

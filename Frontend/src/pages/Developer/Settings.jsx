@@ -1,27 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { usersApi } from '../../api/users.api';
 import PageHeader from '../../components/developer/PageHeader';
 import { CheckIcon } from '../../components/common/Icons';
 
 export default function Settings({ onLogout }) {
-  const { user, loading, refetch, logout } = useAuth();
+  const { user, refetch, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'account' | 'security'
-  const [name, setName] = useState('');
-  const [bio, setBio] = useState('');
-  const [githubUsername, setGithubUsername] = useState('');
+  const [name, setName] = useState(user?.name || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [githubUsername, setGithubUsername] = useState(user?.githubUsername || '');
+  const [prevUser, setPrevUser] = useState(user);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '');
-      setBio(user.bio || '');
-      setGithubUsername(user.githubUsername || '');
-    }
-  }, [user]);
+  if (user !== prevUser) {
+    setPrevUser(user);
+    setName(user?.name || '');
+    setBio(user?.bio || '');
+    setGithubUsername(user?.githubUsername || '');
+  }
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
