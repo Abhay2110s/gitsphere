@@ -11,10 +11,13 @@ export function useProjects() {
     setError(null);
     try {
       const res = await projectsApi.getProjects();
-      setProjects(Array.isArray(res) ? res : res?.projects || []);
+      const list = Array.isArray(res) ? res : res?.data || res?.projects || [];
+      setProjects(list);
+      return list;
     } catch (err) {
-      setError(err);
+      setError(err?.message || 'Failed to fetch projects');
       setProjects([]);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -25,21 +28,35 @@ export function useProjects() {
     projectsApi.getProjects()
       .then((res) => {
         if (!ignore) {
-          setProjects(Array.isArray(res) ? res : res?.projects || []);
+          const list = Array.isArray(res) ? res : res?.data || res?.projects || [];
+          setProjects(list);
           setLoading(false);
         }
       })
       .catch((err) => {
         if (!ignore) {
-          setError(err);
+          setError(err?.message || 'Failed to fetch projects');
           setProjects([]);
           setLoading(false);
         }
       });
 
+    const handleSync = () => {
+      fetchProjects();
+    };
+
+    window.addEventListener('gitsphere:project-created', handleSync);
     return () => {
       ignore = true;
+      window.removeEventListener('gitsphere:project-created', handleSync);
     };
+  }, [fetchProjects]);
+
+  const createProject = useCallback(async (projectData) => {
+    const created = await projectsApi.createProject(projectData);
+    setProjects((prev) => [created, ...prev]);
+    window.dispatchEvent(new CustomEvent('gitsphere:project-created', { detail: created }));
+    return created;
   }, []);
 
   return {
@@ -47,5 +64,6 @@ export function useProjects() {
     loading,
     error,
     refetch: fetchProjects,
+    createProject,
   };
 }

@@ -9,6 +9,18 @@ export const createProjectSchema = (req, res, next) => {
     });
   }
 
+  if (name.trim().length < 2) {
+    return res.status(400).json({
+      message: "Project name must be at least 2 characters long"
+    });
+  }
+
+  if (name.trim().length > 100) {
+    return res.status(400).json({
+      message: "Project name cannot exceed 100 characters"
+    });
+  }
+
   next();
 };
 

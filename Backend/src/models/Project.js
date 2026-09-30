@@ -34,6 +34,16 @@ const projectSchema = new mongoose.Schema(
       },
       default: 'PLANNING'
     },
+    projectType: {
+      type: String,
+      default: 'web',
+      trim: true
+    },
+    visibility: {
+      type: String,
+      default: 'private',
+      trim: true
+    },
     startDate: {
       type: Date
     },

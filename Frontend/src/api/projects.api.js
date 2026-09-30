@@ -4,7 +4,25 @@ export const projectsApi = {
   // Get projects the user is a member of (or created if manager)
   getProjects: async () => {
     const res = await api.get('/projects');
-    return res.data;
+    return res?.data ?? res;
+  },
+
+  // Create project (Manager only)
+  createProject: async (projectData) => {
+    const res = await api.post('/projects', projectData);
+    return res?.data ?? res;
+  },
+
+  // Update project (Manager only)
+  updateProject: async (projectId, projectData) => {
+    const res = await api.patch(`/projects/${projectId}`, projectData);
+    return res?.data ?? res;
+  },
+
+  // Delete project (Manager only)
+  deleteProject: async (projectId) => {
+    const res = await api.delete(`/projects/${projectId}`);
+    return res?.data ?? res;
   },
 
   // Get project details by ID

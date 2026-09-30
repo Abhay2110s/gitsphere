@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import StatCard from '../../components/manager/StatCard';
 import EmptyState from '../../components/manager/EmptyState';
 import CreateProjectModal from '../../components/manager/CreateProjectModal';
+import { useProjects } from '../../hooks/useProjects';
 import {
   FolderIcon,
   GitPullRequestIcon,
@@ -12,11 +13,11 @@ import {
   PlusIcon,
 } from '../../components/common/Icons';
 
-export default function Dashboard({ onNavigateToProjects }) {
+export default function Dashboard({ onNavigateToProjects, onSelectProject }) {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const { projects, createProject } = useProjects();
 
   // Dynamic state hooks initialized to zero/empty (prepared for real API data)
-  const [projects] = useState([]);
   const [pendingReviews] = useState([]);
   const [tasks] = useState([]);
   const [teamMembers] = useState([]);
@@ -112,8 +113,20 @@ export default function Dashboard({ onNavigateToProjects }) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {projects.map((p) => (
-                <div key={p.id} className="p-4 rounded-xl border border-[#222222] bg-[#111111]">
-                  <h3 className="font-bold text-white text-sm">{p.name}</h3>
+                <div
+                  key={p.id || p._id}
+                  onClick={() => onSelectProject ? onSelectProject(p) : (onNavigateToProjects && onNavigateToProjects())}
+                  className="p-4 rounded-xl border border-[#222222] bg-[#111111] hover:border-white transition-all cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-white text-sm">{p.name}</h3>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1C1C1C] text-[#AAAAAA] uppercase">
+                      {p.status || 'PLANNING'}
+                    </span>
+                  </div>
+                  {p.description && (
+                    <p className="text-xs text-[#888888] mt-1.5 line-clamp-2">{p.description}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -199,9 +212,7 @@ export default function Dashboard({ onNavigateToProjects }) {
       <CreateProjectModal
         isOpen={isCreateProjectOpen}
         onClose={() => setIsCreateProjectOpen(false)}
-        onCreateProject={(data) => {
-          console.log('Project created:', data);
-        }}
+        onCreateProject={createProject}
       />
     </div>
   );

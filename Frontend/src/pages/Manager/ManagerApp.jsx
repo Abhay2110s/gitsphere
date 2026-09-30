@@ -49,7 +49,10 @@ export default function ManagerApp({ initialSection = 'dashboard', onNavigateToL
       onLogout={onNavigateToLanding}
     >
       {currentSection === 'dashboard' && (
-        <Dashboard onNavigateToProjects={() => handleNavigate('projects')} />
+        <Dashboard
+          onNavigateToProjects={() => handleNavigate('projects')}
+          onSelectProject={(proj) => handleNavigate('project-details', proj)}
+        />
       )}
 
       {currentSection === 'projects' && (
