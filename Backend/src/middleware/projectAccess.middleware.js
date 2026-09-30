@@ -13,13 +13,13 @@ import { AppError } from '../utils/response.js';
 export const hasProjectAccess = (project, user) => {
   if (!project || !user) return false;
   const userId = user._id || user.id;
-  if (user.role === 'MANAGER') {
-    return project.createdBy?.equals
-      ? project.createdBy.equals(userId)
-      : String(project.createdBy) === String(userId);
-  }
+  const isCreator = project.createdBy?.equals
+    ? project.createdBy.equals(userId)
+    : String(project.createdBy?._id || project.createdBy) === String(userId);
+  if (isCreator) return true;
+
   return (project.members || []).some((m) =>
-    m.equals ? m.equals(userId) : String(m) === String(userId)
+    m?.equals ? m.equals(userId) : String(m?._id || m) === String(userId)
   );
 };
 

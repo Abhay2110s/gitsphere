@@ -39,9 +39,10 @@ export const getProjects = async (user, queryParams = {}) => {
 
   const query = {};
 
-  // Access filter: Manager sees created, User sees memberships
-  if (user.role === 'MANAGER') {
-    query.createdBy = user._id;
+  // Access filter: Manager sees created or memberships, User sees memberships
+  const role = String(user.role || '').toUpperCase();
+  if (role === 'MANAGER') {
+    query.$or = [{ createdBy: user._id }, { members: user._id }];
   } else {
     query.members = user._id;
   }
@@ -130,18 +131,35 @@ export const deleteProject = async (projectId) => {
  * Rule 1: Manager can add only Users (cannot add another Manager).
  * Rule 2: Cannot add duplicate member.
  */
-export const addMember = async (projectId, memberUserId) => {
-  if (!mongoose.Types.ObjectId.isValid(memberUserId)) {
-    throw new AppError('Invalid user ID format', 400, 'INVALID_ID');
+export const addMember = async (projectId, memberUserIdOrEmail) => {
+  if (!memberUserIdOrEmail) {
+    throw new AppError('User ID or email address is required', 400, 'INVALID_INPUT');
   }
 
-  const targetUser = await User.findById(memberUserId);
+  let targetUser = null;
+  const identifier = String(memberUserIdOrEmail).trim();
+
+  // Try by ObjectId if valid format
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    targetUser = await User.findById(identifier);
+  }
+
+  // Try by email
   if (!targetUser) {
-    throw new AppError('User not found', 404, 'NOT_FOUND');
+    targetUser = await User.findOne({ email: identifier.toLowerCase() });
+  }
+
+  if (!targetUser) {
+    throw new AppError(
+      `User "${identifier}" not found. Please ensure the developer has registered an account.`,
+      404,
+      'NOT_FOUND'
+    );
   }
 
   // Rule: Only Users can be added to project members
-  if (targetUser.role !== 'USER') {
+  const targetRole = String(targetUser.role || '').toUpperCase();
+  if (targetRole !== 'USER') {
     throw new AppError('Only users with role USER can be added as project members.', 400, 'INVALID_MEMBER_ROLE');
   }
 
@@ -151,12 +169,12 @@ export const addMember = async (projectId, memberUserId) => {
   }
 
   // Check if user is already a member
-  const alreadyMember = project.members.some((id) => id.equals(memberUserId));
+  const alreadyMember = project.members.some((id) => id.equals(targetUser._id));
   if (alreadyMember) {
-    throw new AppError('This user is already a member of this project.', 409, 'ALREADY_MEMBER');
+    throw new AppError(`${targetUser.name || targetUser.email} is already a member of this project.`, 409, 'ALREADY_MEMBER');
   }
 
-  project.members.push(memberUserId);
+  project.members.push(targetUser._id);
   await project.save();
 
   const populated = await project.populate([
@@ -167,7 +185,7 @@ export const addMember = async (projectId, memberUserId) => {
   // Notify the added user
   notifyMemberAdded({
     project,
-    addedUserId: memberUserId,
+    addedUserId: targetUser._id,
     managerId: project.createdBy._id || project.createdBy
   }).catch(() => {});
 
@@ -176,7 +194,7 @@ export const addMember = async (projectId, memberUserId) => {
     user: project.createdBy._id || project.createdBy,
     project: project._id,
     action: 'MEMBER_ADDED',
-    metadata: { memberId: memberUserId, memberName: targetUser.name }
+    metadata: { memberId: targetUser._id, memberName: targetUser.name }
   });
 
   return populated;

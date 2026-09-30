@@ -75,8 +75,9 @@ export const deleteProject = asyncHandler(async (req, res) => {
  * @access  Private (Manager only)
  */
 export const addMember = asyncHandler(async (req, res) => {
-  const { userId } = req.body;
-  const project = await projectService.addMember(req.params.projectId, userId);
+  const { userId, email, memberId } = req.body;
+  const identifier = userId || email || memberId;
+  const project = await projectService.addMember(req.params.projectId, identifier);
   return sendSuccess(res, {
     message: 'Member added to project successfully',
     data: project

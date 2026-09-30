@@ -19,14 +19,27 @@ export default function CreateTaskModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // Normalize availableProjects to guarantee array
+  const projectList = useMemo(() => {
+    if (Array.isArray(availableProjects)) return availableProjects;
+    if (Array.isArray(availableProjects?.projects)) return availableProjects.projects;
+    if (Array.isArray(availableProjects?.data?.projects)) return availableProjects.data.projects;
+    if (Array.isArray(availableProjects?.data)) return availableProjects.data;
+    return [];
+  }, [availableProjects]);
+
+  // Derive effective project ID without needing cascading render effects
+  const defaultProjectId = projectList.length > 0 ? String(projectList[0]._id || projectList[0].id) : '';
+  const selectedProjectId = formData.project || defaultProjectId;
+
   // Derive developer options based on selected project members or available developers
   const developerOptions = useMemo(() => {
     const map = new Map();
 
-    // If a project is selected, add its members
-    if (formData.project) {
-      const selectedProj = availableProjects.find(
-        (p) => String(p._id || p.id) === String(formData.project)
+    // If a project is selected, prioritize its members
+    if (selectedProjectId) {
+      const selectedProj = projectList.find(
+        (p) => String(p._id || p.id) === String(selectedProjectId)
       );
       if (selectedProj?.members && Array.isArray(selectedProj.members)) {
         selectedProj.members.forEach((m) => {
@@ -36,6 +49,19 @@ export default function CreateTaskModal({
         });
       }
     }
+
+    // Also include members from all projects
+    projectList.forEach((p) => {
+      if (p.members && Array.isArray(p.members)) {
+        p.members.forEach((m) => {
+          const id = String(m._id || m.id || m);
+          if (!map.has(id)) {
+            const name = m.name || m.fullName || m.email || id;
+            map.set(id, { id, name });
+          }
+        });
+      }
+    });
 
     // Add general available developers
     availableDevelopers.forEach((d) => {
@@ -47,13 +73,13 @@ export default function CreateTaskModal({
     });
 
     return Array.from(map.values());
-  }, [formData.project, availableProjects, availableDevelopers]);
+  }, [selectedProjectId, projectList, availableDevelopers]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.project) {
+    if (!selectedProjectId) {
       setError('Please select a project');
       return;
     }
@@ -63,7 +89,7 @@ export default function CreateTaskModal({
     try {
       if (onCreateTask) {
         await onCreateTask({
-          projectId: formData.project,
+          projectId: selectedProjectId,
           title: formData.title.trim(),
           description: formData.description.trim(),
           assignedTo: formData.assignee || null,
@@ -158,18 +184,18 @@ export default function CreateTaskModal({
               <select
                 required
                 disabled={submitting}
-                value={formData.project}
-                onChange={(e) => setFormData({ ...formData, project: e.target.value, assignee: '' })}
+                value={selectedProjectId}
+                onChange={(e) => setFormData((prev) => ({ ...prev, project: e.target.value, assignee: '' }))}
                 className="w-full px-3.5 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-white text-sm focus:border-white focus:outline-none transition-colors disabled:opacity-50"
               >
-                <option value="" disabled>Select project</option>
-                {availableProjects.length === 0 ? (
-                  <option value="" disabled>No projects available</option>
+                <option value="" disabled className="bg-[#141414] text-[#888888]">Select project</option>
+                {projectList.length === 0 ? (
+                  <option value="" disabled className="bg-[#141414] text-[#888888]">No projects available (Create a project first)</option>
                 ) : (
-                  availableProjects.map((p) => {
+                  projectList.map((p) => {
                     const id = p._id || p.id;
                     return (
-                      <option key={id} value={id}>
+                      <option key={id} value={id} className="bg-[#141414] text-white">
                         {p.name}
                       </option>
                     );
@@ -188,9 +214,9 @@ export default function CreateTaskModal({
                 onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-white text-sm focus:border-white focus:outline-none transition-colors disabled:opacity-50"
               >
-                <option value="">Unassigned</option>
+                <option value="" className="bg-[#141414] text-[#888888]">Unassigned</option>
                 {developerOptions.map((d) => (
-                  <option key={d.id} value={d.id}>
+                  <option key={d.id} value={d.id} className="bg-[#141414] text-white">
                     {d.name}
                   </option>
                 ))}
@@ -209,10 +235,10 @@ export default function CreateTaskModal({
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-white text-sm focus:border-white focus:outline-none transition-colors disabled:opacity-50"
               >
-                <option value="LOW">Low (P3)</option>
-                <option value="MEDIUM">Medium (P2)</option>
-                <option value="HIGH">High (P1)</option>
-                <option value="URGENT">Urgent (P0)</option>
+                <option value="LOW" className="bg-[#141414] text-white">Low (P3)</option>
+                <option value="MEDIUM" className="bg-[#141414] text-white">Medium (P2)</option>
+                <option value="HIGH" className="bg-[#141414] text-white">High (P1)</option>
+                <option value="URGENT" className="bg-[#141414] text-white">Urgent (P0)</option>
               </select>
             </div>
 

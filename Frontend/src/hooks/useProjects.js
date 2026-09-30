@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { projectsApi } from '../api/projects.api';
 
+function normalizeProjects(res) {
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data?.projects)) return res.data.projects;
+  if (Array.isArray(res?.projects)) return res.projects;
+  if (Array.isArray(res?.data)) return res.data;
+  return [];
+}
+
 export function useProjects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,7 +19,7 @@ export function useProjects() {
     setError(null);
     try {
       const res = await projectsApi.getProjects();
-      const list = Array.isArray(res) ? res : res?.data || res?.projects || [];
+      const list = normalizeProjects(res);
       setProjects(list);
       return list;
     } catch (err) {
@@ -28,7 +36,7 @@ export function useProjects() {
     projectsApi.getProjects()
       .then((res) => {
         if (!ignore) {
-          const list = Array.isArray(res) ? res : res?.data || res?.projects || [];
+          const list = normalizeProjects(res);
           setProjects(list);
           setLoading(false);
         }

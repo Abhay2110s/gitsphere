@@ -40,12 +40,12 @@ export const updateProjectSchema = (req, res, next) => {
 
 // Validate adding member
 export const addMemberSchema = (req, res, next) => {
-  const { userId } = req.body;
+  const { userId, email, memberId } = req.body;
 
   // Check required fields
-  if (!userId) {
+  if (!userId && !email && !memberId) {
     return res.status(400).json({
-      message: "User ID is required"
+      message: "User ID or email address is required"
     });
   }
 

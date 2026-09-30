@@ -4,7 +4,11 @@ export const projectsApi = {
   // Get projects the user is a member of (or created if manager)
   getProjects: async () => {
     const res = await api.get('/projects');
-    return res?.data ?? res;
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.data?.projects)) return res.data.projects;
+    if (Array.isArray(res?.projects)) return res.projects;
+    if (Array.isArray(res?.data)) return res.data;
+    return [];
   },
 
   // Create project (Manager only)
@@ -40,7 +44,19 @@ export const projectsApi = {
   // Get project members
   getProjectMembers: async (projectId) => {
     const res = await api.get(`/projects/${projectId}/members`);
-    return res.data;
+    return res?.data ?? res;
+  },
+
+  // Add developer/user to project members
+  addProjectMember: async (projectId, memberData) => {
+    const res = await api.post(`/projects/${projectId}/members`, memberData);
+    return res?.data ?? res;
+  },
+
+  // Remove developer/user from project members
+  removeProjectMember: async (projectId, userId) => {
+    const res = await api.delete(`/projects/${projectId}/members/${userId}`);
+    return res?.data ?? res;
   },
 
   // Get latest approved project code
