@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import ManagerLayout from '../../components/manager/ManagerLayout';
 import Dashboard from './Dashboard';
 import Projects from './Projects';
@@ -12,6 +13,7 @@ import Notifications from './Notifications';
 import Settings from './Settings';
 
 export default function ManagerApp({ initialSection = 'dashboard', onNavigateToLanding }) {
+  const { user, logout } = useAuth();
   const [currentSection, setCurrentSection] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
@@ -42,14 +44,23 @@ export default function ManagerApp({ initialSection = 'dashboard', onNavigateToL
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    if (onNavigateToLanding) {
+      onNavigateToLanding();
+    }
+  };
+
   return (
     <ManagerLayout
       currentRoute={currentSection}
       onNavigate={handleNavigate}
-      onLogout={onNavigateToLanding}
+      onLogout={handleLogout}
+      user={user}
     >
       {currentSection === 'dashboard' && (
         <Dashboard
+          user={user}
           onNavigateToProjects={() => handleNavigate('projects')}
           onSelectProject={(proj) => handleNavigate('project-details', proj)}
         />
@@ -78,7 +89,7 @@ export default function ManagerApp({ initialSection = 'dashboard', onNavigateToL
 
       {currentSection === 'notifications' && <Notifications />}
 
-      {currentSection === 'settings' && <Settings />}
+      {currentSection === 'settings' && <Settings user={user} />}
     </ManagerLayout>
   );
 }

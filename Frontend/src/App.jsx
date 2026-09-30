@@ -211,6 +211,9 @@ function App() {
 
   const handleAuthSuccess = (authenticatedUser) => {
     try {
+      if (authenticatedUser && typeof window !== 'undefined') {
+        localStorage.setItem('gitsphere_user', JSON.stringify(authenticatedUser));
+      }
       let role = '';
       if (authenticatedUser && authenticatedUser.role) {
         role = String(authenticatedUser.role).toUpperCase();

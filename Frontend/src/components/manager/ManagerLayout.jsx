@@ -18,9 +18,14 @@ export default function ManagerLayout({
   currentRoute = 'dashboard',
   onNavigate,
   onLogout,
+  user = null,
   children,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const userInitial = user?.name ? user.name[0].toUpperCase() : 'M';
+  const userName = user?.name || 'Manager Account';
+  const userEmail = user?.email || 'manager';
 
   const navigationItems = [
     { id: 'dashboard', name: 'Dashboard', icon: ActivityIcon, path: '/manager/dashboard' },
@@ -95,20 +100,20 @@ export default function ManagerLayout({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center text-xs font-bold text-white shrink-0">
-                M
+                {userInitial}
               </div>
-              <div className="truncate">
-                <div className="text-xs font-bold text-white truncate">Manager Account</div>
-                <div className="text-[10px] font-mono text-[#666666] truncate">fresh workspace</div>
+              <div className="truncate min-w-0">
+                <div className="text-xs font-bold text-white truncate">{userName}</div>
+                <div className="text-[10px] font-mono text-[#666666] truncate">{userEmail}</div>
               </div>
             </div>
             {onLogout && (
               <button
                 onClick={onLogout}
-                title="Exit to Landing"
-                className="text-[10px] font-mono text-[#888888] hover:text-white px-2 py-1 rounded hover:bg-[#1A1A1A] transition-colors cursor-pointer"
+                title="Logout"
+                className="text-[10px] font-mono text-[#888888] hover:text-white px-2 py-1 rounded hover:bg-[#1A1A1A] transition-colors cursor-pointer shrink-0"
               >
-                Exit
+                Logout
               </button>
             )}
           </div>
@@ -155,6 +160,29 @@ export default function ManagerLayout({
                 );
               })}
             </nav>
+            {/* User Card in Mobile Drawer Footer */}
+            <div className="p-4 border-t border-[#1A1A1A] bg-[#070707]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                    {userInitial}
+                  </div>
+                  <div className="truncate min-w-0">
+                    <div className="text-xs font-bold text-white truncate">{userName}</div>
+                    <div className="text-[10px] font-mono text-[#666666] truncate">{userEmail}</div>
+                  </div>
+                </div>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    title="Logout"
+                    className="text-[10px] font-mono text-[#888888] hover:text-white px-2 py-1 rounded hover:bg-[#1A1A1A] transition-colors cursor-pointer shrink-0"
+                  >
+                    Logout
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -186,6 +214,14 @@ export default function ManagerLayout({
               <BellIcon className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#555555]" />
             </button>
+            <div className="flex items-center gap-2 pl-2 border-l border-[#222222]">
+              <div className="w-7 h-7 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                {userInitial}
+              </div>
+              <span className="text-xs font-medium text-[#CCCCCC] hidden sm:inline-block max-w-[120px] truncate">
+                {userName}
+              </span>
+            </div>
           </div>
         </header>
 

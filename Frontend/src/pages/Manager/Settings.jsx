@@ -1,30 +1,41 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 
-export default function Settings() {
-  const [profile, setProfile] = useState(() => {
-    // Check if real authenticated user email exists in storage, otherwise start completely empty
-    const savedEmail = typeof window !== 'undefined'
-      ? (localStorage.getItem('gitsphere_verification_email') || localStorage.getItem('gitsphere_user_email') || '')
-      : '';
-    const savedName = typeof window !== 'undefined'
-      ? (localStorage.getItem('gitsphere_user_name') || '')
-      : '';
+export default function Settings({ user: propUser }) {
+  const { user: authUser } = useAuth();
+  const user = propUser || authUser;
 
-    return {
-      fullName: savedName,
-      email: savedEmail,
-      bio: '',
-      workspaceName: '',
-    };
-  });
+  const [fullName, setFullName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [workspaceName, setWorkspaceName] = useState('Primary Workspace');
+  const [prevUser, setPrevUser] = useState(user);
+
+  if (user !== prevUser) {
+    setPrevUser(user);
+    setFullName(user?.name || '');
+    setEmail(user?.email || '');
+    setBio(user?.bio || '');
+  }
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (typeof window !== 'undefined') {
-      if (profile.fullName) localStorage.setItem('gitsphere_user_name', profile.fullName);
-      if (profile.email) localStorage.setItem('gitsphere_user_email', profile.email);
+      try {
+        const stored = localStorage.getItem('gitsphere_user');
+        const parsed = stored ? JSON.parse(stored) : {};
+        const updated = {
+          ...parsed,
+          name: fullName || parsed.name,
+          email: email || parsed.email,
+          bio: bio,
+        };
+        localStorage.setItem('gitsphere_user', JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
     }
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -69,8 +80,8 @@ export default function Settings() {
               <input
                 type="text"
                 placeholder="Enter full name"
-                value={profile.fullName}
-                onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-white text-sm focus:border-white focus:outline-none transition-colors"
               />
             </div>
@@ -82,8 +93,8 @@ export default function Settings() {
               <input
                 type="email"
                 placeholder="Enter email address"
-                value={profile.email}
-                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-white text-sm focus:border-white focus:outline-none transition-colors"
               />
             </div>
@@ -96,8 +107,8 @@ export default function Settings() {
             <textarea
               rows={3}
               placeholder="Tell your team about your role and responsibilities..."
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-white text-sm focus:border-white focus:outline-none transition-colors resize-none"
             />
           </div>
@@ -121,8 +132,8 @@ export default function Settings() {
             <input
               type="text"
               placeholder="e.g. Acme Engineering"
-              value={profile.workspaceName}
-              onChange={(e) => setProfile({ ...profile, workspaceName: e.target.value })}
+              value={workspaceName}
+              onChange={(e) => setWorkspaceName(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-white text-sm focus:border-white focus:outline-none transition-colors"
             />
           </div>

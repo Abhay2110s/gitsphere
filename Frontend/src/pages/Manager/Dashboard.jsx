@@ -13,7 +13,7 @@ import {
   PlusIcon,
 } from '../../components/common/Icons';
 
-export default function Dashboard({ onNavigateToProjects, onSelectProject }) {
+export default function Dashboard({ user, onNavigateToProjects, onSelectProject }) {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const { projects, createProject } = useProjects();
 
@@ -30,10 +30,10 @@ export default function Dashboard({ onNavigateToProjects, onSelectProject }) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-[#1F1F1F]">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Welcome to GitSphere.
+            Welcome back{user?.name ? `, ${user.name}` : ''}.
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-[#888888]">
-            Create your first project and start organizing your development workflow.
+            {user?.email ? `${user.email} • ` : ''}Manage projects, track team progress, and review developer contributions.
           </p>
         </div>
         <div>
