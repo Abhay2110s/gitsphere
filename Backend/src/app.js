@@ -40,8 +40,8 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Ensure MongoDB is connected in serverless / lambda environments
 app.use(async (req, res, next) => {
-  // Allow root, api, and swagger docs without blocking on DB
-  if (req.path === '/' || req.path === '/api' || req.path.startsWith('/api-docs')) {
+  // Allow root, api, health, and swagger docs without blocking on DB
+  if (req.path === '/' || req.path === '/api' || req.path === '/api/v1/health' || req.path.startsWith('/api-docs')) {
     return next();
   }
 
