@@ -1,6 +1,7 @@
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
+import Contribution from '../models/Contribution.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Notification from '../models/Notification.js';
 
@@ -51,6 +52,26 @@ export const getManagerDashboard = async (managerId) => {
     })
   ]);
 
+  // Pending contributions (IN_REVIEW) for Manager Dashboard
+  const pendingContributions = await Contribution.find({
+    project: { $in: projectIds },
+    status: 'IN_REVIEW'
+  })
+    .populate('developer', 'name email avatar role')
+    .populate('task', 'title status priority')
+    .populate('project', 'name')
+    .sort({ submittedAt: -1, createdAt: -1 });
+
+  // Recent contributions across all statuses
+  const recentContributions = await Contribution.find({
+    project: { $in: projectIds }
+  })
+    .populate('developer', 'name email avatar role')
+    .populate('task', 'title status priority')
+    .populate('project', 'name')
+    .sort({ submittedAt: -1, createdAt: -1 })
+    .limit(10);
+
   // Recent Activity in manager's projects
   const recentActivity = await ActivityLog.find({ project: { $in: projectIds } })
     .populate('user', 'name email avatar role')
@@ -70,7 +91,10 @@ export const getManagerDashboard = async (managerId) => {
     tasksInReview,
     tasksInProgress,
     overdueTasks,
-    recentActivity
+    recentActivity,
+    pendingReviews: pendingContributions,
+    contributions: pendingContributions,
+    recentContributions
   };
 };
 

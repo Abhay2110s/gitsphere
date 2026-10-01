@@ -62,6 +62,8 @@ export default function ManagerApp({ initialSection = 'dashboard', onNavigateToL
         <Dashboard
           user={user}
           onNavigateToProjects={() => handleNavigate('projects')}
+          onNavigateToContributions={() => handleNavigate('contributions')}
+          onNavigateToReviews={() => handleNavigate('reviews')}
           onSelectProject={(proj) => handleNavigate('project-details', proj)}
         />
       )}

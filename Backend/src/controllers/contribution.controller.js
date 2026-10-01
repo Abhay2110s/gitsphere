@@ -24,7 +24,14 @@ export const createContribution = asyncHandler(async (req, res) => {
 export const getContributions = asyncHandler(async (req, res) => {
   const { projectId } = req.query;
   if (!projectId) {
-    throw new AppError('projectId query parameter is required', 400, 'VALIDATION_ERROR');
+    const contributions = await contributionService.getAllContributionsForUser(
+      req.user,
+      req.query
+    );
+    return sendSuccess(res, {
+      message: 'Contributions retrieved successfully',
+      data: contributions
+    });
   }
 
   const { contributions, pagination } = await contributionService.getContributionsByProject(

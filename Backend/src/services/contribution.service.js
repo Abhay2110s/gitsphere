@@ -639,3 +639,48 @@ export const getPendingReviews = async (manager) => {
 
   return contributions;
 };
+
+// ============================================================
+// 10. Get All Contributions For User / Manager
+// ============================================================
+
+/**
+ * Returns all contributions for projects the user or manager has access to.
+ */
+export const getAllContributionsForUser = async (user, queryParams = {}) => {
+  let projectIds = [];
+  if (user.role === 'MANAGER') {
+    const projects = await Project.find({ createdBy: user._id }).select('_id');
+    projectIds = projects.map((p) => p._id);
+  } else {
+    const projects = await Project.find({ members: user._id }).select('_id');
+    projectIds = projects.map((p) => p._id);
+  }
+
+  const query = { project: { $in: projectIds } };
+
+  if (queryParams.status && queryParams.status !== 'All') {
+    const statusFormatted = queryParams.status.toUpperCase().replace(/\s+/g, '_');
+    const validStatuses = ['DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED'];
+    if (validStatuses.includes(statusFormatted)) {
+      query.status = statusFormatted;
+    }
+  }
+
+  if (queryParams.projectId && mongoose.Types.ObjectId.isValid(queryParams.projectId)) {
+    query.project = queryParams.projectId;
+  }
+
+  if (queryParams.taskId && mongoose.Types.ObjectId.isValid(queryParams.taskId)) {
+    query.task = queryParams.taskId;
+  }
+
+  const contributions = await Contribution.find(query)
+    .populate('developer', 'name email avatar role')
+    .populate('reviewedBy', 'name email avatar role')
+    .populate('task', 'title status priority')
+    .populate('project', 'name')
+    .sort({ submittedAt: -1, createdAt: -1 });
+
+  return contributions;
+};
