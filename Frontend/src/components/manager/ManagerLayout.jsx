@@ -18,6 +18,7 @@ export default function ManagerLayout({
   currentRoute = 'dashboard',
   onNavigate,
   onLogout,
+  unreadNotificationsCount = 0,
   user = null,
   children,
 }) {
@@ -82,14 +83,25 @@ export default function ManagerLayout({
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-white text-black font-bold shadow'
                     : 'text-[#888888] hover:text-white hover:bg-[#141414]'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-black' : 'text-[#666666]'}`} />
-                <span>{item.name}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-black' : 'text-[#666666]'}`} />
+                  <span>{item.name}</span>
+                </div>
+                {item.id === 'notifications' && unreadNotificationsCount > 0 && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                      isActive ? 'bg-black text-white' : 'bg-white text-black shadow-sm'
+                    }`}
+                  >
+                    {unreadNotificationsCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -148,14 +160,25 @@ export default function ManagerLayout({
                   <button
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold ${
                       isActive
                         ? 'bg-white text-black font-bold'
                         : 'text-[#888888] hover:text-white hover:bg-[#141414]'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.name}</span>
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-4 h-4" />
+                      <span>{item.name}</span>
+                    </div>
+                    {item.id === 'notifications' && unreadNotificationsCount > 0 && (
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                          isActive ? 'bg-black text-white' : 'bg-white text-black'
+                        }`}
+                      >
+                        {unreadNotificationsCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -212,7 +235,13 @@ export default function ManagerLayout({
               title="Notifications"
             >
               <BellIcon className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#555555]" />
+              {unreadNotificationsCount > 0 ? (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-black text-[10px] font-mono font-black flex items-center justify-center shadow-lg">
+                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                </span>
+              ) : (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#333333]" />
+              )}
             </button>
             <div className="flex items-center gap-2 pl-2 border-l border-[#222222]">
               <div className="w-7 h-7 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center text-xs font-bold text-white shrink-0">

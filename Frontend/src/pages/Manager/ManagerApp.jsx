@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifications } from '../../hooks/useNotifications';
 import ManagerLayout from '../../components/manager/ManagerLayout';
 import Dashboard from './Dashboard';
 import Projects from './Projects';
@@ -14,6 +15,7 @@ import Settings from './Settings';
 
 export default function ManagerApp({ initialSection = 'dashboard', onNavigateToLanding }) {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const [currentSection, setCurrentSection] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
@@ -56,6 +58,7 @@ export default function ManagerApp({ initialSection = 'dashboard', onNavigateToL
       currentRoute={currentSection}
       onNavigate={handleNavigate}
       onLogout={handleLogout}
+      unreadNotificationsCount={unreadCount}
       user={user}
     >
       {currentSection === 'dashboard' && (
@@ -64,6 +67,7 @@ export default function ManagerApp({ initialSection = 'dashboard', onNavigateToL
           onNavigateToProjects={() => handleNavigate('projects')}
           onNavigateToContributions={() => handleNavigate('contributions')}
           onNavigateToReviews={() => handleNavigate('reviews')}
+          onNavigateToNotifications={() => handleNavigate('notifications')}
           onSelectProject={(proj) => handleNavigate('project-details', proj)}
         />
       )}

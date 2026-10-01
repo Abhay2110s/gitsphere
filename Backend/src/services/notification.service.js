@@ -17,7 +17,11 @@ import { getIO } from '../sockets/socket.js';
  * @param {string} [notificationData.relatedUser] - User who triggered the action
  */
 export const createNotification = async (notificationData) => {
-  const notification = await Notification.create(notificationData);
+  const targetUserId = notificationData.user?._id || notificationData.user?.id || notificationData.user;
+  const notification = await Notification.create({
+    ...notificationData,
+    user: targetUserId
+  });
 
   // Populate for real-time delivery
   await notification.populate([
@@ -29,7 +33,8 @@ export const createNotification = async (notificationData) => {
   // Deliver in real-time via Socket.IO to the recipient's personal room
   try {
     const io = getIO();
-    io.to(`user:${notificationData.user}`).emit('notification:new', notification);
+    const room = `user:${targetUserId.toString()}`;
+    io.to(room).emit('notification:new', notification);
   } catch {
     // Socket.IO may not be initialized during tests or seeding
     // Silently continue — notification is still persisted in DB
@@ -166,27 +171,28 @@ export const notifyTaskAssigned = async ({ task, assignedUserId, managerId, proj
  */
 export const notifyTaskStatusChanged = async ({ task, changedBy, newStatus, project }) => {
   const recipients = [];
+  const changedById = (changedBy?._id || changedBy?.id || changedBy || '').toString();
 
-  // Notify the assigned user if manager changed status
-  if (task.assignedTo && !task.assignedTo.equals(changedBy._id)) {
-    recipients.push(task.assignedTo);
+  const assignedId = (task?.assignedTo?._id || task?.assignedTo?.id || task?.assignedTo || '').toString();
+  if (assignedId && assignedId !== changedById) {
+    recipients.push(task.assignedTo?._id || task.assignedTo);
   }
 
-  // Notify the project manager if user changed status
-  const managerId = project.createdBy._id || project.createdBy;
-  if (!managerId.equals(changedBy._id)) {
-    recipients.push(managerId);
+  const managerId = (project?.createdBy?._id || project?.createdBy?.id || project?.createdBy || '').toString();
+  if (managerId && managerId !== changedById) {
+    recipients.push(project?.createdBy?._id || project?.createdBy);
   }
 
-  for (const recipientId of recipients) {
+  for (const recipient of recipients) {
+    const targetUserId = recipient?._id || recipient?.id || recipient;
     await createNotification({
-      user: recipientId,
+      user: targetUserId,
       type: 'TASK_STATUS_CHANGED',
       title: 'Task Status Updated',
-      message: `Task "${task.title}" status changed to ${newStatus} by ${changedBy.name}.`,
-      project: project._id || project,
-      task: task._id || task,
-      relatedUser: changedBy._id
+      message: `Task "${task.title}" status changed to ${newStatus} by ${changedBy?.name || 'a team member'}.`,
+      project: project?._id || project,
+      task: task?._id || task,
+      relatedUser: changedBy?._id || changedBy
     });
   }
 };
@@ -195,16 +201,16 @@ export const notifyTaskStatusChanged = async ({ task, changedBy, newStatus, proj
  * Notify project manager when code is submitted for review
  */
 export const notifyCodeSubmitted = async ({ task, submittedBy, project }) => {
-  const managerId = project.createdBy._id || project.createdBy;
+  const managerId = project?.createdBy?._id || project?.createdBy?.id || project?.createdBy;
 
   await createNotification({
     user: managerId,
     type: 'CODE_SUBMITTED',
     title: 'Code Submitted for Review',
-    message: `${submittedBy.name} submitted code for review on task "${task.title}".`,
-    project: project._id || project,
-    task: task._id || task,
-    relatedUser: submittedBy._id
+    message: `${submittedBy?.name || 'Developer'} submitted code for review on task "${task.title}".`,
+    project: project?._id || project,
+    task: task?._id || task,
+    relatedUser: submittedBy?._id || submittedBy
   });
 };
 

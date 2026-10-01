@@ -7,18 +7,27 @@ export function useNotifications() {
   const [error, setError] = useState(null);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
+  const fetchNotifications = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await notificationsApi.getNotifications();
-      const list = Array.isArray(res) ? res : res?.notifications || [];
+      let list = [];
+      if (Array.isArray(res)) {
+        list = res;
+      } else if (Array.isArray(res?.data)) {
+        list = res.data;
+      } else if (Array.isArray(res?.notifications)) {
+        list = res.notifications;
+      }
       setNotifications(list);
     } catch (err) {
-      setError(err);
-      setNotifications([]);
+      if (!silent) {
+        setError(err);
+        setNotifications([]);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -42,36 +51,34 @@ export function useNotifications() {
     }
   };
 
-  useEffect(() => {
-    let ignore = false;
-    notificationsApi.getNotifications()
-      .then((res) => {
-        if (!ignore) {
-          const list = Array.isArray(res) ? res : res?.notifications || [];
-          setNotifications(list);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(err);
-          setNotifications([]);
-          setLoading(false);
-        }
-      });
+  const deleteNotification = async (id) => {
+    try {
+      await notificationsApi.deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n._id !== id && n.id !== id));
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
+  };
 
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  useEffect(() => {
+    fetchNotifications();
+
+    // Poll every 10 seconds for real-time notification alerts
+    const interval = setInterval(() => {
+      fetchNotifications(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   return {
     notifications,
     unreadCount,
     loading,
     error,
-    refetch: fetchNotifications,
+    refetch: () => fetchNotifications(false),
     markAsRead,
     markAllAsRead,
+    deleteNotification,
   };
 }
