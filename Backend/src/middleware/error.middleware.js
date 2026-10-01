@@ -20,16 +20,16 @@ export const errorHandler = (err, req, res, next) => {
   let message = err.message || 'An unexpected error occurred';
   let details = err.details || null;
 
-  // Log error during development
-  if (process.env.NODE_ENV === 'development') {
-    console.error('[Error Middleware]', {
-      name: err.name,
-      message: err.message,
-      errorCode,
-      statusCode,
-      stack: err.stack
-    });
-  }
+  // Always log error to console for cloud/Vercel function log observability
+  console.error('[Error Middleware]', {
+    method: req.method,
+    url: req.originalUrl,
+    name: err.name,
+    message: err.message,
+    errorCode,
+    statusCode,
+    stack: err.stack
+  });
 
   // Handle Mongoose Bad ObjectId (CastError)
   if (err.name === 'CastError') {
