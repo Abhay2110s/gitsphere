@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import swaggerUi from 'swagger-ui-express';
@@ -65,7 +66,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 // Secure uploaded files with authentication and path traversal protection
 app.use('/uploads', authenticate, (req, res) => {
   const safeFilename = path.basename(req.path);
-  const uploadsDir = path.resolve(__dirname, '../uploads');
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const uploadsDir = isServerless
+    ? path.join(os.tmpdir(), 'uploads')
+    : path.resolve(__dirname, '../uploads');
   const resolvedPath = path.resolve(uploadsDir, safeFilename);
 
   if (!resolvedPath.startsWith(uploadsDir)) {
