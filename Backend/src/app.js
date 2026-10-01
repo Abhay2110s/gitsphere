@@ -25,11 +25,28 @@ import activityRoutes from './routes/activity.routes.js';
 import attachmentRoutes from './routes/attachment.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import contributionRoutes from './routes/contribution.routes.js';
+import { connectDB } from './config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Ensure MongoDB is connected in serverless / lambda environments
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await connectDB();
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection failed',
+        error: err.message
+      });
+    }
+  }
+  next();
+});
 
 // Swagger Documentation UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
@@ -58,10 +75,32 @@ app.use(
   })
 );
 
-// Cross-Origin Resource Sharing setup
+// Cross-Origin Resource Sharing setup (compatible with Vercel preview & production)
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, mobile, postman, same-origin)
+      if (!origin) return callback(null, true);
+
+      const clientUrl = process.env.CLIENT_URL;
+      const allowed = [
+        clientUrl,
+        'http://localhost:5173',
+        'http://localhost:5000',
+        'http://localhost:3000'
+      ].filter(Boolean);
+
+      if (
+        allowed.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        process.env.NODE_ENV !== 'production'
+      ) {
+        callback(null, true);
+      } else {
+        // Permissive fallback so cross-origin Vercel deployments succeed
+        callback(null, true);
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -80,6 +119,12 @@ if (process.env.NODE_ENV !== 'test') {
 
 // Base welcome endpoint
 app.get('/', (req, res) => {
+  return sendSuccess(res, {
+    message: 'Welcome to GitSphere API - Real-Time Collaborative Coding & Code Review Platform',
+  });
+});
+
+app.get('/api', (req, res) => {
   return sendSuccess(res, {
     message: 'Welcome to GitSphere API - Real-Time Collaborative Coding & Code Review Platform',
   });

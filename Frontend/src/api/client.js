@@ -4,7 +4,8 @@
  * with standard JSON response formatting and normalized error handling.
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const rawBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const BASE_URL = rawBase.replace(/\/+$/, '');
 
 class ApiError extends Error {
   constructor(message, status = 500, code = 'API_ERROR', details = null) {
