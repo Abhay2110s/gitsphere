@@ -53,10 +53,23 @@ export function useProjects() {
       fetchProjects();
     };
 
+    const handleUpdateSync = (e) => {
+      if (e.detail?.projectId) {
+        setProjects((prev) =>
+          prev.map((p) => {
+            const id = p.id || p._id;
+            return id === e.detail.projectId ? { ...p, status: e.detail.status, ...(e.detail.project || {}) } : p;
+          })
+        );
+      }
+    };
+
     window.addEventListener('gitsphere:project-created', handleSync);
+    window.addEventListener('gitsphere:project-updated', handleUpdateSync);
     return () => {
       ignore = true;
       window.removeEventListener('gitsphere:project-created', handleSync);
+      window.removeEventListener('gitsphere:project-updated', handleUpdateSync);
     };
   }, [fetchProjects]);
 
@@ -67,11 +80,29 @@ export function useProjects() {
     return created;
   }, []);
 
+  const updateProjectStatus = useCallback(async (projectId, status) => {
+    const updated = await projectsApi.updateProject(projectId, { status });
+    const clean = updated?.data ?? updated;
+    setProjects((prev) =>
+      prev.map((p) => {
+        const id = p.id || p._id;
+        return id === projectId ? { ...p, ...clean, status } : p;
+      })
+    );
+    window.dispatchEvent(
+      new CustomEvent('gitsphere:project-updated', {
+        detail: { projectId, status, project: clean }
+      })
+    );
+    return clean;
+  }, []);
+
   return {
     projects,
     loading,
     error,
     refetch: fetchProjects,
     createProject,
+    updateProjectStatus
   };
 }
