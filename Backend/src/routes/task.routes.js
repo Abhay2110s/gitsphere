@@ -60,6 +60,7 @@ router.post(
 );
 
 router.get('/:taskId/files', codeController.getFilesByTask);
+router.post('/:taskId/sync-project', codeController.syncTaskWithProject);
 
 // 8. Task Reviews
 router.post(

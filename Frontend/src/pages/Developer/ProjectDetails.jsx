@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { projectsApi } from '../../api/projects.api';
+import { useAuth } from '../../hooks/useAuth';
 import EmptyState from '../../components/developer/EmptyState';
 import ErrorState from '../../components/developer/ErrorState';
 import TaskCard from '../../components/developer/TaskCard';
@@ -19,6 +20,7 @@ export default function ProjectDetails({
   onSelectTask,
   onOpenWorkspace,
 }) {
+  const { user } = useAuth();
   const projectId = initialProject?._id || initialProject?.id || propProjectId;
 
   const [project, setProject] = useState(initialProject || null);
@@ -28,6 +30,15 @@ export default function ProjectDetails({
   const [projectCode, setProjectCode] = useState(null);
   const [loading, setLoading] = useState(!initialProject && Boolean(projectId));
   const [error, setError] = useState(null);
+
+  const currentUserId = user?._id || user?.id;
+  const myTasks = useMemo(() => {
+    if (!currentUserId) return tasks;
+    return tasks.filter((t) => {
+      const assigned = t.assignedTo?._id || t.assignedTo;
+      return assigned && (assigned === currentUserId || assigned.toString() === currentUserId.toString());
+    });
+  }, [tasks, currentUserId]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -184,7 +195,7 @@ export default function ProjectDetails({
               : 'text-[#888888] hover:text-white'
           }`}
         >
-          Tasks ({tasks.length})
+          My Tasks ({myTasks.length})
         </button>
         <button
           onClick={() => handleTabChange('versions')}
@@ -271,15 +282,15 @@ export default function ProjectDetails({
       {/* TAB 2: Tasks */}
       {activeTab === 'tasks' && (
         <div>
-          {tasks.length === 0 ? (
+          {myTasks.length === 0 ? (
             <EmptyState
               icon={TaskCheckIcon}
-              title="NO TASKS IN PROJECT"
-              description="No tasks have been created for this project yet."
+              title="NO TASKS ASSIGNED"
+              description="No tasks have been assigned to you for this project yet."
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {tasks.map((task) => (
+              {myTasks.map((task) => (
                 <TaskCard
                   key={task._id || task.id}
                   task={task}

@@ -111,6 +111,8 @@ export default function DeveloperCodeEditor({
   const [contributionNotes, setContributionNotes] = useState('');
   const [submittingContribution, setSubmittingContribution] = useState(false);
   const [contributionSuccess, setContributionSuccess] = useState(null);
+  const [syncingProject, setSyncingProject] = useState(false);
+  const [syncMessage, setSyncMessage] = useState(null);
 
   // Active file resolution
   const activeFile = useMemo(() => {
@@ -318,6 +320,32 @@ export default function DeveloperCodeEditor({
     }
   };
 
+  // Sync workspace files with project repository
+  const handleSyncProject = async () => {
+    if (!effectiveTaskId) return;
+    try {
+      setSyncingProject(true);
+      setError(null);
+      const res = await tasksApi.syncTaskFiles(effectiveTaskId);
+      const rawList = res?.data?.files || res?.files || [];
+      const list = rawList.map((f) => ({
+        ...f,
+        name: f.name || f.fileName,
+        path: f.path || (f.filePath && f.filePath !== '/' ? `${f.filePath.replace(/^\/+|\/+$/g, '')}/${f.fileName}` : f.fileName),
+      }));
+      setFiles(list);
+      if (!activeFileId && list.length > 0) {
+        handleSelectFile(list[0]);
+      }
+      setSyncMessage(res?.message || 'Workspace synchronized with project repository.');
+      setTimeout(() => setSyncMessage(null), 4000);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSyncingProject(false);
+    }
+  };
+
   // Submit contribution to backend
   const handleSubmitContribution = async (e) => {
     e.preventDefault();
@@ -381,6 +409,16 @@ export default function DeveloperCodeEditor({
             </button>
 
             <button
+              onClick={handleSyncProject}
+              disabled={!effectiveTaskId || syncingProject}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#333333] hover:border-white text-xs font-bold text-[#CCCCCC] hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
+              title="Pull latest approved files from project repository"
+            >
+              <GitBranchIcon className="w-3.5 h-3.5" />
+              <span>{syncingProject ? 'Syncing...' : 'Sync Project'}</span>
+            </button>
+
+            <button
               onClick={handleSaveFile}
               disabled={!activeFile || saving || !isDirty}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -417,6 +455,22 @@ export default function DeveloperCodeEditor({
           </div>
         }
       />
+
+      {/* Project Sync Notification Banner */}
+      {syncMessage && (
+        <div className="p-3.5 rounded-xl bg-blue-950/40 border border-blue-800/50 flex items-center justify-between text-xs text-blue-400 font-mono animate-fade-in">
+          <div className="flex items-center gap-2">
+            <CheckIcon className="w-4 h-4 text-blue-400 shrink-0" />
+            <span>{syncMessage}</span>
+          </div>
+          <button
+            onClick={() => setSyncMessage(null)}
+            className="p-1 hover:text-white transition-colors cursor-pointer"
+          >
+            <CloseIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Contribution Success Banner */}
       {contributionSuccess && (

@@ -49,9 +49,23 @@ export default function Contributions({
   }, [activeProjectId]);
 
   const filteredContributions = contributions.filter((c) => {
-    if (statusFilter === 'ALL') return true;
-    return c.status === statusFilter;
+    const taskStatus = (c.task?.status || '').toUpperCase();
+    const isCompleted = taskStatus === 'COMPLETED';
+
+    if (statusFilter === 'CHANGES_REQUESTED') {
+      if (isCompleted) return false;
+      return (c.status || '').toUpperCase() === 'CHANGES_REQUESTED';
+    }
+    if (statusFilter === 'APPROVED') {
+      return (c.status || '').toUpperCase() === 'APPROVED' || isCompleted;
+    }
+    if (statusFilter === 'IN_REVIEW') {
+      if (isCompleted) return false;
+      return (c.status || '').toUpperCase() === 'IN_REVIEW';
+    }
+    return true;
   });
+
 
   const isLoading = loadingProjects || loading;
 

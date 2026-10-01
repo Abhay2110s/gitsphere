@@ -30,6 +30,20 @@ export const getFilesByTask = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Sync task files with latest approved project files
+ * @route   POST /api/v1/tasks/:taskId/sync-project
+ * @access  Private (Assigned User or Manager)
+ */
+export const syncTaskWithProject = asyncHandler(async (req, res) => {
+  const result = await codeService.syncTaskWithProject(req.params.taskId, req.user);
+  return sendSuccess(res, {
+    message: result.message,
+    data: result
+  });
+});
+
+
+/**
  * @desc    Get file details and content
  * @route   GET /api/v1/code/files/:fileId
  * @access  Private (Authorized members / Manager)

@@ -61,6 +61,20 @@ export const registerChatHandlers = (io, socket) => {
           return socket.emit('chat:error', { message: 'Task not found in this project' });
         }
 
+        if (user.role !== 'MANAGER') {
+          const assignedId = task.assignedTo?._id || task.assignedTo;
+          const userId = user._id || user.id;
+          const isAssigned =
+            assignedId &&
+            (assignedId.equals
+              ? assignedId.equals(userId)
+              : String(assignedId) === String(userId));
+
+          if (!isAssigned) {
+            return socket.emit('chat:error', { message: 'Access denied. You can only join chat for tasks assigned to you.' });
+          }
+        }
+
         const roomName = `chat:task:${taskId}`;
         socket.join(roomName);
         socket.emit('chat:joined', { room: roomName, type: 'task', taskId });
@@ -124,6 +138,20 @@ export const registerChatHandlers = (io, socket) => {
         const task = await Task.findById(taskId);
         if (!task || !task.project.equals(projectId)) {
           return socket.emit('chat:error', { message: 'Task not found in this project' });
+        }
+
+        if (user.role !== 'MANAGER') {
+          const assignedId = task.assignedTo?._id || task.assignedTo;
+          const userId = user._id || user.id;
+          const isAssigned =
+            assignedId &&
+            (assignedId.equals
+              ? assignedId.equals(userId)
+              : String(assignedId) === String(userId));
+
+          if (!isAssigned) {
+            return socket.emit('chat:error', { message: 'Access denied. You can only send messages for tasks assigned to you.' });
+          }
         }
       }
 

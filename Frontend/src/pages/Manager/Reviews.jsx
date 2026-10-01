@@ -41,9 +41,22 @@ export default function Reviews() {
     loadReviews();
   }, []);
 
-  const pending = reviews.filter(r => (r.status || '').toUpperCase() === 'IN_REVIEW').length;
-  const completed = reviews.filter(r => (r.status || '').toUpperCase() === 'APPROVED').length;
-  const changesRequested = reviews.filter(r => (r.status || '').toUpperCase() === 'CHANGES_REQUESTED').length;
+  const isChangesRequested = (r) => {
+    const s = (r.status || '').toUpperCase();
+    if (s !== 'CHANGES_REQUESTED') return false;
+    const taskStatus = (r.task?.status || '').toUpperCase();
+    return taskStatus !== 'COMPLETED';
+  };
+
+  const isApproved = (r) => {
+    const s = (r.status || '').toUpperCase();
+    const taskStatus = (r.task?.status || '').toUpperCase();
+    return s === 'APPROVED' || (taskStatus === 'COMPLETED' && s !== 'DRAFT');
+  };
+
+  const pending = reviews.filter(r => (r.status || '').toUpperCase() === 'IN_REVIEW' && (r.task?.status || '').toUpperCase() !== 'COMPLETED').length;
+  const completed = reviews.filter(isApproved).length;
+  const changesRequested = reviews.filter(isChangesRequested).length;
 
   const tabs = [
     { id: 'All', label: 'All Reviews', count: reviews.length },
@@ -53,9 +66,14 @@ export default function Reviews() {
   ];
 
   const filteredReviews = reviews.filter((r) => {
-    const s = (r.status || '').toUpperCase();
-    if (activeTab !== 'All' && s !== activeTab) {
-      return false;
+    if (activeTab === 'CHANGES_REQUESTED') {
+      if (!isChangesRequested(r)) return false;
+    } else if (activeTab === 'APPROVED') {
+      if (!isApproved(r)) return false;
+    } else if (activeTab === 'IN_REVIEW') {
+      if ((r.status || '').toUpperCase() !== 'IN_REVIEW' || (r.task?.status || '').toUpperCase() === 'COMPLETED') return false;
+    } else if (activeTab !== 'All') {
+      if ((r.status || '').toUpperCase() !== activeTab) return false;
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -66,6 +84,7 @@ export default function Reviews() {
     }
     return true;
   });
+
 
   const handleOpenReview = (rev) => {
     setSelectedReview(rev);

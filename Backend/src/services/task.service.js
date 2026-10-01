@@ -2,6 +2,9 @@ import mongoose from 'mongoose';
 import Task from '../models/Task.js';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
+import Contribution from '../models/Contribution.js';
+import CodeReview from '../models/CodeReview.js';
+import Notification from '../models/Notification.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { notifyTaskAssigned, notifyTaskStatusChanged } from './notification.service.js';
@@ -121,14 +124,20 @@ export const getTasksByProject = async (user, projectId, queryParams = {}) => {
 
   const query = { project: projectId };
 
+  // Rule: Do not show tasks assigned to one developer to other developers.
+  // Managers can view all tasks in their projects (or filter by assignedTo).
+  // Non-managers (Developers) can ONLY see tasks assigned directly to them.
+  if (user.role !== 'MANAGER') {
+    query.assignedTo = user._id;
+  } else if (queryParams.assignedTo) {
+    query.assignedTo = queryParams.assignedTo;
+  }
+
   if (queryParams.status) {
     query.status = queryParams.status;
   }
   if (queryParams.priority) {
     query.priority = queryParams.priority;
-  }
-  if (queryParams.assignedTo) {
-    query.assignedTo = queryParams.assignedTo;
   }
   if (queryParams.label) {
     query.labels = queryParams.label;
@@ -180,6 +189,22 @@ export const getTaskById = async (taskId, user) => {
         ? 'Access denied to this task.'
         : "Access denied. You are not a member of this task's project.";
     throw new AppError(message, 403, 'FORBIDDEN');
+  }
+
+  // Rule: Do not show tasks assigned to other developers.
+  // Non-managers (Developers) can only view details of tasks assigned to them.
+  if (user.role !== 'MANAGER') {
+    const assignedId = task.assignedTo?._id || task.assignedTo;
+    const userId = user._id || user.id;
+    const isAssigned =
+      assignedId &&
+      (assignedId.equals
+        ? assignedId.equals(userId)
+        : String(assignedId) === String(userId));
+
+    if (!isAssigned) {
+      throw new AppError('Access denied. You can only view tasks assigned to you.', 403, 'FORBIDDEN');
+    }
   }
 
   return task;
@@ -399,6 +424,25 @@ export const updateTaskStatus = async (taskId, user, newStatus) => {
   const oldStatus = task.status;
   task.status = newStatus;
   await task.save();
+
+  if (newStatus === 'COMPLETED') {
+    // Clear all previous CHANGES_REQUESTED records for this task
+    await Contribution.updateMany(
+      { task: task._id, status: 'CHANGES_REQUESTED' },
+      { status: 'APPROVED', reviewedAt: new Date(), reviewedBy: user._id }
+    );
+
+    await CodeReview.updateMany(
+      { task: task._id, status: 'CHANGES_REQUESTED' },
+      { status: 'APPROVED', reviewedAt: new Date(), reviewedBy: user._id }
+    );
+
+    // Delete changes requested notifications for this task
+    await Notification.deleteMany({
+      task: task._id,
+      type: 'CHANGES_REQUESTED_NOTIFICATION'
+    });
+  }
 
   const populatedTask = await task.populate([
     { path: 'createdBy', select: 'name email avatar' },

@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import CodeReview from '../models/CodeReview.js';
 import Task from '../models/Task.js';
+import Contribution from '../models/Contribution.js';
+import Notification from '../models/Notification.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { notifyCodeSubmitted, notifyCodeReviewed } from './notification.service.js';
@@ -115,6 +117,23 @@ export const evaluateReview = async (reviewId, manager, status, summary = '') =>
   // Synchronize task status
   if (status === 'APPROVED') {
     task.status = 'COMPLETED';
+
+    // Clear all previous CHANGES_REQUESTED records for this task
+    await CodeReview.updateMany(
+      { task: task._id, status: 'CHANGES_REQUESTED' },
+      { status: 'APPROVED', reviewedAt: new Date(), reviewedBy: manager._id }
+    );
+
+    await Contribution.updateMany(
+      { task: task._id, status: 'CHANGES_REQUESTED' },
+      { status: 'APPROVED', reviewedAt: new Date(), reviewedBy: manager._id }
+    );
+
+    // Delete changes requested notifications for this task
+    await Notification.deleteMany({
+      task: task._id,
+      type: 'CHANGES_REQUESTED_NOTIFICATION'
+    });
   } else if (status === 'CHANGES_REQUESTED') {
     task.status = 'CHANGES_REQUESTED';
   }
@@ -170,6 +189,21 @@ export const getReviewsByTask = async (taskId, user) => {
     throw new AppError(message, 403, 'FORBIDDEN');
   }
 
+  // Developer isolation: only view reviews for tasks assigned to you
+  if (user.role !== 'MANAGER') {
+    const assignedId = task.assignedTo?._id || task.assignedTo;
+    const userId = user._id || user.id;
+    const isAssigned =
+      assignedId &&
+      (assignedId.equals
+        ? assignedId.equals(userId)
+        : String(assignedId) === String(userId));
+
+    if (!isAssigned) {
+      throw new AppError('Access denied. You can only view reviews for tasks assigned to you.', 403, 'FORBIDDEN');
+    }
+  }
+
   const reviews = await CodeReview.find({ task: taskId })
     .populate('submittedBy', 'name email avatar role')
     .populate('reviewedBy', 'name email avatar role')
@@ -206,6 +240,27 @@ export const getReviewById = async (reviewId, user) => {
         ? 'Access denied to reviews outside your projects.'
         : 'Access denied. You are not a member of this project.';
     throw new AppError(message, 403, 'FORBIDDEN');
+  }
+
+  // Developer isolation: only view review if task is assigned to you or you submitted it
+  if (user.role !== 'MANAGER') {
+    const taskAssignedId = review.task?.assignedTo?._id || review.task?.assignedTo;
+    const submitterId = review.submittedBy?._id || review.submittedBy;
+    const userId = user._id || user.id;
+
+    const isAssigned =
+      (taskAssignedId &&
+        (taskAssignedId.equals
+          ? taskAssignedId.equals(userId)
+          : String(taskAssignedId) === String(userId))) ||
+      (submitterId &&
+        (submitterId.equals
+          ? submitterId.equals(userId)
+          : String(submitterId) === String(userId)));
+
+    if (!isAssigned) {
+      throw new AppError('Access denied. You can only view reviews for tasks assigned to you.', 403, 'FORBIDDEN');
+    }
   }
 
   return review;

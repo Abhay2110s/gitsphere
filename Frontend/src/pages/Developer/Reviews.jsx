@@ -61,9 +61,23 @@ export default function Reviews({ onSelectReview }) {
   };
 
   const filteredReviews = reviews.filter((r) => {
-    if (statusFilter === 'ALL') return true;
-    return r.status === statusFilter;
+    const taskStatus = (r.task?.status || '').toUpperCase();
+    const isCompleted = taskStatus === 'COMPLETED';
+
+    if (statusFilter === 'CHANGES_REQUESTED') {
+      if (isCompleted) return false;
+      return (r.status || '').toUpperCase() === 'CHANGES_REQUESTED';
+    }
+    if (statusFilter === 'APPROVED') {
+      return (r.status || '').toUpperCase() === 'APPROVED' || isCompleted;
+    }
+    if (statusFilter === 'IN_REVIEW') {
+      if (isCompleted) return false;
+      return (r.status || '').toUpperCase() === 'IN_REVIEW';
+    }
+    return true;
   });
+
 
   const isLoading = tasksLoading || loading;
 

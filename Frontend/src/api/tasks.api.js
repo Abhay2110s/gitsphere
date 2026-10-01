@@ -37,11 +37,18 @@ export const tasksApi = {
     return res.data;
   },
 
+  // Sync workspace files with latest project repository code
+  syncTaskFiles: async (taskId) => {
+    const res = await api.post(`/tasks/${taskId}/sync-project`);
+    return res.data;
+  },
+
   // Create/save coding file for task
   createTaskFile: async (taskId, fileData) => {
     const res = await api.post(`/tasks/${taskId}/files`, fileData);
     return res.data;
   },
+
 
   // Get task reviews
   getTaskReviews: async (taskId) => {

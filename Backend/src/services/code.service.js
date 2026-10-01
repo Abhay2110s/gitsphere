@@ -28,8 +28,8 @@ const verifyTaskAccess = async (taskId, user, requireWrite = false) => {
     throw new AppError(message, 403, 'FORBIDDEN');
   }
 
-  // Regular User write permission check
-  if (user.role !== 'MANAGER' && requireWrite) {
+  // Non-manager developer isolation: only access tasks assigned to you
+  if (user.role !== 'MANAGER') {
     const assignedId = task.assignedTo?._id || task.assignedTo;
     const userId = user._id || user.id;
     const isAssigned =
@@ -40,7 +40,7 @@ const verifyTaskAccess = async (taskId, user, requireWrite = false) => {
 
     if (!isAssigned) {
       throw new AppError(
-        'Permission denied. You can only create or edit code in your assigned tasks.',
+        'Permission denied. You can only access code in tasks assigned to you.',
         403,
         'FORBIDDEN'
       );
@@ -78,8 +78,8 @@ const verifyFileAccess = async (fileId, user, requireWrite = false) => {
     throw new AppError(message, 403, 'FORBIDDEN');
   }
 
-  // Regular User write permission check
-  if (user.role !== 'MANAGER' && requireWrite) {
+  // Non-manager developer isolation: only access files in tasks assigned to you
+  if (user.role !== 'MANAGER') {
     const assignedId = task.assignedTo?._id || task.assignedTo;
     const userId = user._id || user.id;
     const isAssigned =
@@ -90,7 +90,7 @@ const verifyFileAccess = async (fileId, user, requireWrite = false) => {
 
     if (!isAssigned) {
       throw new AppError(
-        'Permission denied. You can only edit code in tasks assigned to you.',
+        'Permission denied. You can only access files in tasks assigned to you.',
         403,
         'FORBIDDEN'
       );
@@ -168,17 +168,110 @@ export const createFile = async (taskId, user, fileData) => {
 
 /**
  * Get all files in a task (for file explorer tree)
+ * Automatically inherits files from project.currentFiles if the task has no files yet.
  */
 export const getFilesByTask = async (taskId, user) => {
-  await verifyTaskAccess(taskId, user, false);
+  const { task, project } = await verifyTaskAccess(taskId, user, false);
 
-  const files = await CodeFile.find({ task: taskId })
+  let files = await CodeFile.find({ task: taskId })
     .populate('createdBy', 'name email avatar')
     .populate('lastModifiedBy', 'name email avatar')
     .sort({ filePath: 1, fileName: 1 });
 
+  // If this task has no files yet, but the project already has files in project.currentFiles
+  if (files.length === 0 && Array.isArray(project.currentFiles) && project.currentFiles.length > 0) {
+    for (const f of project.currentFiles) {
+      const normalized = (f.path || f.fileName || '').replace(/\\/g, '/').replace(/^\/+/, '');
+      const lastSlashIndex = normalized.lastIndexOf('/');
+      const fileName = lastSlashIndex !== -1 ? normalized.slice(lastSlashIndex + 1) : normalized;
+      const filePath = lastSlashIndex !== -1 ? `/${normalized.slice(0, lastSlashIndex)}` : '/';
+
+      await CodeFile.create({
+        project: project._id,
+        task: task._id,
+        fileName,
+        filePath,
+        language: f.language || 'javascript',
+        content: f.content || '',
+        createdBy: user._id,
+        lastModifiedBy: user._id,
+        version: 1
+      });
+    }
+
+    files = await CodeFile.find({ task: taskId })
+      .populate('createdBy', 'name email avatar')
+      .populate('lastModifiedBy', 'name email avatar')
+      .sort({ filePath: 1, fileName: 1 });
+  }
+
   return files;
 };
+
+/**
+ * Sync task files with latest approved project files (Project.currentFiles)
+ */
+export const syncTaskWithProject = async (taskId, user) => {
+  const { task, project } = await verifyTaskAccess(taskId, user, true);
+
+  if (!Array.isArray(project.currentFiles) || project.currentFiles.length === 0) {
+    const existing = await CodeFile.find({ task: taskId })
+      .populate('createdBy', 'name email avatar')
+      .populate('lastModifiedBy', 'name email avatar')
+      .sort({ filePath: 1, fileName: 1 });
+    return {
+      message: 'No project files available to sync',
+      syncedCount: 0,
+      files: existing
+    };
+  }
+
+  const existingFiles = await CodeFile.find({ task: taskId });
+  const existingMap = new Map();
+  for (const ef of existingFiles) {
+    const fullPath = ef.filePath && ef.filePath !== '/'
+      ? `${ef.filePath.replace(/^\/+|\/+$/g, '')}/${ef.fileName}`
+      : ef.fileName;
+    existingMap.set(fullPath, ef);
+    existingMap.set(ef.fileName, ef);
+  }
+
+  let syncedCount = 0;
+  for (const pf of project.currentFiles) {
+    const normalized = (pf.path || pf.fileName || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    const lastSlashIndex = normalized.lastIndexOf('/');
+    const fileName = lastSlashIndex !== -1 ? normalized.slice(lastSlashIndex + 1) : normalized;
+    const filePath = lastSlashIndex !== -1 ? `/${normalized.slice(0, lastSlashIndex)}` : '/';
+
+    const existing = existingMap.get(normalized) || existingMap.get(fileName);
+    if (!existing) {
+      await CodeFile.create({
+        project: project._id,
+        task: task._id,
+        fileName,
+        filePath,
+        language: pf.language || 'javascript',
+        content: pf.content || '',
+        createdBy: user._id,
+        lastModifiedBy: user._id,
+        version: 1
+      });
+      syncedCount++;
+    }
+  }
+
+  const updatedFiles = await CodeFile.find({ task: taskId })
+    .populate('createdBy', 'name email avatar')
+    .populate('lastModifiedBy', 'name email avatar')
+    .sort({ filePath: 1, fileName: 1 });
+
+  return {
+    message: syncedCount > 0 ? `Synced ${syncedCount} new file(s) from project repository` : 'Task workspace is already up to date with project repository',
+    syncedCount,
+    files: updatedFiles
+  };
+};
+
 
 /**
  * Get single file content and metadata

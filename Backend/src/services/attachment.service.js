@@ -47,6 +47,20 @@ export const createAttachment = async ({ file, user, projectId = null, taskId = 
     if (!task) {
       throw new AppError('Task not found', 404, 'NOT_FOUND');
     }
+
+    if (user.role !== 'MANAGER') {
+      const assignedId = task.assignedTo?._id || task.assignedTo;
+      const userId = user._id || user.id;
+      const isAssigned =
+        assignedId &&
+        (assignedId.equals
+          ? assignedId.equals(userId)
+          : String(assignedId) === String(userId));
+
+      if (!isAssigned) {
+        throw new AppError('Access denied. You can only attach files to tasks assigned to you.', 403, 'FORBIDDEN');
+      }
+    }
   }
 
   const fileUrl = `/uploads/${file.filename}`;
@@ -86,6 +100,25 @@ export const getAttachments = async (user, queryParams = {}) => {
     if (!mongoose.Types.ObjectId.isValid(queryParams.taskId)) {
       throw new AppError('Invalid Task ID format', 400, 'INVALID_ID');
     }
+
+    if (user.role !== 'MANAGER') {
+      const task = await Task.findById(queryParams.taskId);
+      if (!task) {
+        throw new AppError('Task not found', 404, 'NOT_FOUND');
+      }
+      const assignedId = task.assignedTo?._id || task.assignedTo;
+      const userId = user._id || user.id;
+      const isAssigned =
+        assignedId &&
+        (assignedId.equals
+          ? assignedId.equals(userId)
+          : String(assignedId) === String(userId));
+
+      if (!isAssigned) {
+        throw new AppError('Access denied. You can only view attachments for tasks assigned to you.', 403, 'FORBIDDEN');
+      }
+    }
+
     query.task = queryParams.taskId;
   }
 

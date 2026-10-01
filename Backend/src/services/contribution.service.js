@@ -3,6 +3,8 @@ import Contribution from '../models/Contribution.js';
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
+import CodeReview from '../models/CodeReview.js';
+import Notification from '../models/Notification.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { logActivity } from './activity.service.js';
@@ -253,12 +255,29 @@ export const approveContribution = async (contributionId, manager) => {
   }));
   await contribution.save();
 
-  // Step 6: Update task status if appropriate
+  // Step 6: Update task status to COMPLETED and clear all previous CHANGES_REQUESTED
   const task = await Task.findById(contribution.task);
-  if (task && task.status === 'IN_REVIEW') {
+  if (task) {
     task.status = 'COMPLETED';
     await task.save();
   }
+
+  // Clear all previous CHANGES_REQUESTED records for this task from both Contribution and CodeReview
+  await Contribution.updateMany(
+    { task: contribution.task, status: 'CHANGES_REQUESTED' },
+    { status: 'APPROVED', reviewedAt: new Date(), reviewedBy: manager._id }
+  );
+
+  await CodeReview.updateMany(
+    { task: contribution.task, status: 'CHANGES_REQUESTED' },
+    { status: 'APPROVED', reviewedAt: new Date(), reviewedBy: manager._id }
+  );
+
+  // Clear any active changes requested notifications for this task
+  await Notification.deleteMany({
+    task: contribution.task,
+    type: 'CHANGES_REQUESTED_NOTIFICATION'
+  });
 
   // Step 7: Create activity log
   logActivity({
@@ -434,6 +453,11 @@ export const getContributionsByProject = async (projectId, user, queryParams = {
 
   const query = { project: projectId };
 
+  // Developer isolation: developers can only see contributions for their own assigned tasks
+  if (user.role !== 'MANAGER') {
+    query.developer = user._id;
+  }
+
   // Optional status filter
   if (queryParams.status) {
     const validStatuses = ['DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED'];
@@ -502,6 +526,9 @@ export const getContributionById = async (contributionId, user) => {
     const isMember = project.members.some((m) => m.equals(user._id));
     if (!isMember) {
       throw new AppError('Access denied. You are not a member of this project.', 403, 'FORBIDDEN');
+    }
+    if (!contribution.developer.equals(user._id)) {
+      throw new AppError('Access denied. You can only view your own contributions.', 403, 'FORBIDDEN');
     }
   }
 

@@ -47,6 +47,21 @@ const verifyTaskAccess = async (taskId, projectId, user) => {
     throw new AppError('Task does not belong to this project.', 400, 'TASK_PROJECT_MISMATCH');
   }
 
+  // Developer isolation: only participate in chats for tasks assigned to you
+  if (user.role !== 'MANAGER') {
+    const assignedId = task.assignedTo?._id || task.assignedTo;
+    const userId = user._id || user.id;
+    const isAssigned =
+      assignedId &&
+      (assignedId.equals
+        ? assignedId.equals(userId)
+        : String(assignedId) === String(userId));
+
+    if (!isAssigned) {
+      throw new AppError('Access denied. You can only access chat for tasks assigned to you.', 403, 'FORBIDDEN');
+    }
+  }
+
   return task;
 };
 
@@ -127,6 +142,21 @@ export const getTaskMessages = async (taskId, user, queryParams = {}) => {
 
   // Verify user has access to the parent project
   await verifyProjectAccess(task.project._id, user);
+
+  // Developer isolation: only view messages for tasks assigned to you
+  if (user.role !== 'MANAGER') {
+    const assignedId = task.assignedTo?._id || task.assignedTo;
+    const userId = user._id || user.id;
+    const isAssigned =
+      assignedId &&
+      (assignedId.equals
+        ? assignedId.equals(userId)
+        : String(assignedId) === String(userId));
+
+    if (!isAssigned) {
+      throw new AppError('Access denied. You can only view chat for tasks assigned to you.', 403, 'FORBIDDEN');
+    }
+  }
 
   const page = parseInt(queryParams.page, 10) || 1;
   const limit = parseInt(queryParams.limit, 10) || 50;

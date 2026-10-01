@@ -41,10 +41,23 @@ export default function Contributions() {
     loadContributions();
   }, []);
 
+  const isChangesRequested = (c) => {
+    const s = (c.status || '').toUpperCase();
+    if (s !== 'CHANGES_REQUESTED') return false;
+    const taskStatus = (c.task?.status || '').toUpperCase();
+    return taskStatus !== 'COMPLETED';
+  };
+
+  const isApproved = (c) => {
+    const s = (c.status || '').toUpperCase();
+    const taskStatus = (c.task?.status || '').toUpperCase();
+    return s === 'APPROVED' || (taskStatus === 'COMPLETED' && s !== 'DRAFT');
+  };
+
   const draft = contributions.filter(c => (c.status || '').toUpperCase() === 'DRAFT').length;
-  const inReview = contributions.filter(c => (c.status || '').toUpperCase() === 'IN_REVIEW').length;
-  const approved = contributions.filter(c => (c.status || '').toUpperCase() === 'APPROVED').length;
-  const changesRequested = contributions.filter(c => (c.status || '').toUpperCase() === 'CHANGES_REQUESTED').length;
+  const inReview = contributions.filter(c => (c.status || '').toUpperCase() === 'IN_REVIEW' && (c.task?.status || '').toUpperCase() !== 'COMPLETED').length;
+  const approved = contributions.filter(isApproved).length;
+  const changesRequested = contributions.filter(isChangesRequested).length;
 
   const tabs = [
     { id: 'All', label: 'All', count: contributions.length },
@@ -55,9 +68,14 @@ export default function Contributions() {
   ];
 
   const filteredContributions = contributions.filter((c) => {
-    const status = (c.status || '').toUpperCase();
-    if (activeTab !== 'All' && status !== activeTab) {
-      return false;
+    if (activeTab === 'CHANGES_REQUESTED') {
+      if (!isChangesRequested(c)) return false;
+    } else if (activeTab === 'APPROVED') {
+      if (!isApproved(c)) return false;
+    } else if (activeTab === 'IN_REVIEW') {
+      if ((c.status || '').toUpperCase() !== 'IN_REVIEW' || (c.task?.status || '').toUpperCase() === 'COMPLETED') return false;
+    } else if (activeTab !== 'All') {
+      if ((c.status || '').toUpperCase() !== activeTab) return false;
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -68,6 +86,7 @@ export default function Contributions() {
     }
     return true;
   });
+
 
   const handleSelectContribution = (c) => {
     setSelectedContribution(c);

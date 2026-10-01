@@ -34,6 +34,21 @@ const verifyRoomAccess = async (taskId, user) => {
     return { authorized: false, message };
   }
 
+  // Developer isolation: only collaborate on tasks assigned to you
+  if (user.role !== 'MANAGER') {
+    const assignedId = task.assignedTo?._id || task.assignedTo;
+    const userId = user._id || user.id;
+    const isAssigned =
+      assignedId &&
+      (assignedId.equals
+        ? assignedId.equals(userId)
+        : String(assignedId) === String(userId));
+
+    if (!isAssigned) {
+      return { authorized: false, message: 'Access denied. You can only collaborate on tasks assigned to you.' };
+    }
+  }
+
   return { authorized: true, task, project };
 };
 
