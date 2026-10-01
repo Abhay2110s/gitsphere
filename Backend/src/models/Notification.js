@@ -84,6 +84,11 @@ const notificationSchema = new mongoose.Schema(
 notificationSchema.index({ user: 1, isRead: 1, createdAt: -1 });
 notificationSchema.index({ user: 1, createdAt: -1 });
 
+// Automatically remove older notifications after a fixed time (Default: 30 days, configurable via NOTIFICATION_TTL_DAYS)
+const NOTIFICATION_TTL_DAYS = parseInt(process.env.NOTIFICATION_TTL_DAYS, 10) || 30;
+const NOTIFICATION_TTL_SECONDS = parseInt(process.env.NOTIFICATION_TTL_SECONDS, 10) || NOTIFICATION_TTL_DAYS * 24 * 60 * 60;
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: NOTIFICATION_TTL_SECONDS });
+
 const Notification = mongoose.model('Notification', notificationSchema);
 
 export default Notification;

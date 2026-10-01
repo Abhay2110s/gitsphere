@@ -72,7 +72,8 @@ export const getNotifications = async (userId, queryParams = {}) => {
       .populate('relatedUser', 'name email avatar')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit),
+      .limit(limit)
+      .lean(),
     Notification.countDocuments(query),
     Notification.countDocuments({ user: userId, isRead: false })
   ]);
