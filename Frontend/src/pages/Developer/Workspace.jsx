@@ -65,7 +65,12 @@ export default function Workspace({
     tasksApi.getTaskFiles(effectiveTaskId)
       .then((res) => {
         if (!ignore) {
-          const fileList = Array.isArray(res) ? res : res?.files || [];
+          const rawList = Array.isArray(res) ? res : res?.files || res?.data || [];
+          const fileList = rawList.map((f) => ({
+            ...f,
+            name: f.name || f.fileName,
+            path: f.path || (f.filePath && f.filePath !== '/' ? `${f.filePath.replace(/^\/+|\/+$/g, '')}/${f.fileName}` : f.fileName),
+          }));
           setFiles(fileList);
           setSelectedFile(fileList.length > 0 ? fileList[0] : null);
         }
@@ -94,7 +99,12 @@ export default function Workspace({
     setError(null);
     tasksApi.getTaskFiles(effectiveTaskId)
       .then((res) => {
-        const fileList = Array.isArray(res) ? res : res?.files || [];
+        const rawList = Array.isArray(res) ? res : res?.files || res?.data || [];
+        const fileList = rawList.map((f) => ({
+          ...f,
+          name: f.name || f.fileName,
+          path: f.path || (f.filePath && f.filePath !== '/' ? `${f.filePath.replace(/^\/+|\/+$/g, '')}/${f.fileName}` : f.fileName),
+        }));
         setFiles(fileList);
         setSelectedFile(fileList.length > 0 ? fileList[0] : null);
       })
@@ -278,13 +288,17 @@ export default function Workspace({
 
               <div className="space-y-1 overflow-y-auto max-h-[400px]">
                 {files.map((file) => {
+                  const fid = file._id || file.id || file.name || file.fileName;
                   const isSelected =
                     (selectedFile?._id && file._id === selectedFile._id) ||
-                    (selectedFile?.name && file.name === selectedFile.name);
+                    (selectedFile?.id && file.id === selectedFile.id) ||
+                    (selectedFile?.name && file.name === selectedFile.name) ||
+                    (selectedFile?.fileName && file.fileName === selectedFile.fileName);
+                  const displayName = file.path || file.name || file.fileName || 'untitled';
 
                   return (
                     <button
-                      key={file._id || file.id || file.name}
+                      key={fid}
                       onClick={() => setSelectedFile(file)}
                       className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${
                         isSelected
@@ -294,7 +308,7 @@ export default function Workspace({
                     >
                       <div className="flex items-center gap-2 truncate">
                         <CodeIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{file.path || file.name}</span>
+                        <span className="truncate">{displayName}</span>
                       </div>
                       <span className="text-[10px] uppercase opacity-60 ml-2">
                         {file.language || 'txt'}

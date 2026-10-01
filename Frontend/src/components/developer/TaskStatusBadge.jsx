@@ -29,6 +29,13 @@ const STATUS_CONFIG = {
     text: 'text-[#DDDDDD]',
     dot: 'bg-[#888888]',
   },
+  CHANGES_REQUESTED: {
+    label: 'Changes Requested',
+    bg: 'bg-amber-950/20',
+    border: 'border-amber-900/40',
+    text: 'text-amber-400',
+    dot: 'bg-amber-500',
+  },
   BLOCKED: {
     label: 'Blocked',
     bg: 'bg-red-950/20',

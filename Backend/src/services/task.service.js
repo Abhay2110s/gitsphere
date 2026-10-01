@@ -343,18 +343,34 @@ export const updateTaskStatus = async (taskId, user, newStatus) => {
 
   if (user.role === 'MANAGER') {
     // Verify Manager owns the task's project
-    if (!task.project.createdBy.equals(user._id)) {
+    const projectOwnerId = task.project?.createdBy?._id || task.project?.createdBy;
+    const userId = user._id || user.id;
+    const isOwner =
+      projectOwnerId &&
+      (projectOwnerId.equals
+        ? projectOwnerId.equals(userId)
+        : String(projectOwnerId) === String(userId));
+
+    if (!isOwner) {
       throw new AppError('You can only update status for tasks in projects you created.', 403, 'FORBIDDEN');
     }
   } else {
     // User role validations
-    if (!task.assignedTo || !task.assignedTo.equals(user._id)) {
+    const assignedId = task.assignedTo?._id || task.assignedTo;
+    const userId = user._id || user.id;
+    const isAssigned =
+      assignedId &&
+      (assignedId.equals
+        ? assignedId.equals(userId)
+        : String(assignedId) === String(userId));
+
+    if (!isAssigned) {
       throw new AppError('You can only update the status of tasks assigned to you.', 403, 'FORBIDDEN');
     }
 
     // Rule 11 & Rule 9: Only Managers can approve code / complete tasks
     if (newStatus === 'COMPLETED') {
-      throw new AppError('Users cannot approve their own code or mark tasks as completed.', 403, 'FORBIDDEN');
+      throw new AppError('Developers cannot approve their own code or mark tasks as completed. Submissions require manager review.', 403, 'FORBIDDEN');
     }
 
     // Rule 10: Only Managers can request changes
@@ -366,14 +382,14 @@ export const updateTaskStatus = async (taskId, user, newStatus) => {
     const validUserTransitions = {
       TODO: ['IN_PROGRESS'],
       CHANGES_REQUESTED: ['IN_PROGRESS'],
-      IN_PROGRESS: ['IN_REVIEW'],
+      IN_PROGRESS: ['TODO', 'IN_REVIEW'],
       IN_REVIEW: [] // Must wait for Manager review
     };
 
     const allowed = validUserTransitions[task.status] || [];
     if (!allowed.includes(newStatus)) {
       throw new AppError(
-        `Invalid status transition from ${task.status} to ${newStatus} for assigned User. Allowed transitions: ${allowed.join(', ') || 'None (Awaiting Manager review)'}`,
+        `Invalid status transition from ${task.status} to ${newStatus} for assigned developer. Allowed transitions: ${allowed.join(', ') || 'None (Awaiting Manager review)'}`,
         400,
         'INVALID_STATUS_TRANSITION'
       );

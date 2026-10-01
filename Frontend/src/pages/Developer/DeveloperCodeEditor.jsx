@@ -114,7 +114,7 @@ export default function DeveloperCodeEditor({
 
   // Active file resolution
   const activeFile = useMemo(() => {
-    return files.find((f) => (f._id || f.id || f.name) === activeFileId) || null;
+    return files.find((f) => (f._id || f.id || f.name || f.fileName) === activeFileId) || null;
   }, [files, activeFileId]);
 
   const editorCode = activeFileId ? (fileContents[activeFileId] ?? activeFile?.content ?? '') : '';
@@ -124,17 +124,17 @@ export default function DeveloperCodeEditor({
   // Open file in tabs
   const handleSelectFile = useCallback((file) => {
     if (!file || file.type === 'folder') return;
-    const fileId = file._id || file.id || file.name;
+    const fileId = file._id || file.id || file.name || file.fileName;
 
     setOpenTabs((prev) => {
-      if (!prev.some((f) => (f._id || f.id || f.name) === fileId)) {
+      if (!prev.some((f) => (f._id || f.id || f.name || f.fileName) === fileId)) {
         return [...prev, file];
       }
       return prev;
     });
 
     setActiveFileId(fileId);
-    setActiveLanguage(file.language || detectLanguage(file.name || file.path));
+    setActiveLanguage(file.language || detectLanguage(file.name || file.path || file.fileName));
 
     setFileContents((prev) => {
       if (prev[fileId] === undefined) {
@@ -154,15 +154,15 @@ export default function DeveloperCodeEditor({
   // Close tab
   const handleCloseTab = (e, fileIdToClose) => {
     e.stopPropagation();
-    const updatedTabs = openTabs.filter((f) => (f._id || f.id || f.name) !== fileIdToClose);
+    const updatedTabs = openTabs.filter((f) => (f._id || f.id || f.name || f.fileName) !== fileIdToClose);
     setOpenTabs(updatedTabs);
 
     if (activeFileId === fileIdToClose) {
       if (updatedTabs.length > 0) {
         const next = updatedTabs[updatedTabs.length - 1];
-        const nextId = next._id || next.id || next.name;
+        const nextId = next._id || next.id || next.name || next.fileName;
         setActiveFileId(nextId);
-        setActiveLanguage(next.language || detectLanguage(next.name || next.path));
+        setActiveLanguage(next.language || detectLanguage(next.name || next.path || next.fileName));
       } else {
         setActiveFileId(null);
       }
@@ -178,7 +178,12 @@ export default function DeveloperCodeEditor({
       .getTaskFiles(effectiveTaskId)
       .then((res) => {
         if (!ignore) {
-          const list = Array.isArray(res) ? res : res?.files || [];
+          const rawList = Array.isArray(res) ? res : res?.files || res?.data || [];
+          const list = rawList.map((f) => ({
+            ...f,
+            name: f.name || f.fileName,
+            path: f.path || (f.filePath && f.filePath !== '/' ? `${f.filePath.replace(/^\/+|\/+$/g, '')}/${f.fileName}` : f.fileName),
+          }));
           setFiles(list);
           if (list.length > 0) {
             handleSelectFile(list[0]);
@@ -221,8 +226,16 @@ export default function DeveloperCodeEditor({
       if (fileId) {
         await workspaceApi.updateFile(fileId, { content: editorCode });
       } else if (effectiveTaskId) {
+        const normalized = (activeFile.path || activeFile.name || activeFile.fileName || '').replace(/\\/g, '/').replace(/^\/+/, '');
+        const lastSlashIndex = normalized.lastIndexOf('/');
+        const fileName = lastSlashIndex !== -1 ? normalized.slice(lastSlashIndex + 1) : normalized;
+        const filePath = lastSlashIndex !== -1 ? `/${normalized.slice(0, lastSlashIndex)}` : '/';
+
         await tasksApi.createTaskFile(effectiveTaskId, {
-          path: activeFile.path || activeFile.name,
+          fileName,
+          filePath,
+          path: normalized,
+          name: fileName,
           content: editorCode,
           language: activeLanguage,
         });
@@ -235,7 +248,7 @@ export default function DeveloperCodeEditor({
       // Update in files list
       setFiles((prev) =>
         prev.map((f) =>
-          (f._id && f._id === fileId) || f.name === activeFile.name
+          (f._id && f._id === fileId) || (fileId && f.id === fileId) || (f.name && f.name === activeFile.name) || (f.fileName && f.fileName === activeFile.fileName)
             ? { ...f, content: editorCode, language: activeLanguage }
             : f
         )
@@ -260,12 +273,29 @@ export default function DeveloperCodeEditor({
 
     try {
       setSaving(true);
-      const computedLang = newFileLang || detectLanguage(newFilePath.trim());
-      const newFile = await tasksApi.createTaskFile(effectiveTaskId, {
-        path: newFilePath.trim(),
-        content: `// ${newFilePath.trim()}\n`,
+      setError(null);
+      const trimmed = newFilePath.trim();
+      const computedLang = newFileLang || detectLanguage(trimmed);
+      const normalized = trimmed.replace(/\\/g, '/').replace(/^\/+/, '');
+      const lastSlashIndex = normalized.lastIndexOf('/');
+      const fileName = lastSlashIndex !== -1 ? normalized.slice(lastSlashIndex + 1) : normalized;
+      const filePath = lastSlashIndex !== -1 ? `/${normalized.slice(0, lastSlashIndex)}` : '/';
+
+      const res = await tasksApi.createTaskFile(effectiveTaskId, {
+        fileName,
+        filePath,
+        path: normalized,
+        name: fileName,
+        content: `// ${normalized}\n`,
         language: computedLang,
       });
+
+      const rawFile = res?.data || res;
+      const newFile = {
+        ...rawFile,
+        name: rawFile.name || rawFile.fileName || fileName,
+        path: rawFile.path || (rawFile.filePath && rawFile.filePath !== '/' ? `${rawFile.filePath.replace(/^\/+|\/+$/g, '')}/${rawFile.fileName}` : rawFile.fileName) || normalized,
+      };
 
       setFiles((prev) => [...prev, newFile]);
       handleSelectFile(newFile);
@@ -527,9 +557,10 @@ export default function DeveloperCodeEditor({
                   </p>
                 ) : (
                   files.map((file) => {
-                    const fid = file._id || file.id || file.name;
+                    const fid = file._id || file.id || file.name || file.fileName;
                     const isSelected = activeFileId === fid;
-                    const badge = getFileLanguageBadge(file.path || file.name);
+                    const displayName = file.path || file.name || file.fileName || 'untitled';
+                    const badge = getFileLanguageBadge(displayName);
 
                     return (
                       <button
@@ -547,7 +578,7 @@ export default function DeveloperCodeEditor({
                           >
                             {badge.label}
                           </span>
-                          <span className="truncate">{file.path || file.name}</span>
+                          <span className="truncate">{displayName}</span>
                         </div>
                       </button>
                     );
@@ -563,17 +594,18 @@ export default function DeveloperCodeEditor({
             <div className="flex items-center justify-between bg-[#252526] border-b border-[#2B2B2B] overflow-x-auto no-scrollbar">
               <div className="flex items-center flex-1 min-w-0">
                 {openTabs.map((tab) => {
-                  const tabId = tab._id || tab.id || tab.name;
+                  const tabId = tab._id || tab.id || tab.name || tab.fileName;
                   const isActive = activeFileId === tabId;
                   const tabDirty = fileContents[tabId] !== initialContents[tabId] && fileContents[tabId] !== undefined;
-                  const badge = getFileLanguageBadge(tab.path || tab.name);
+                  const displayName = tab.path || tab.name || tab.fileName || 'untitled';
+                  const badge = getFileLanguageBadge(displayName);
 
                   return (
                     <div
                       key={tabId}
                       onClick={() => {
                         setActiveFileId(tabId);
-                        setActiveLanguage(tab.language || detectLanguage(tab.name || tab.path));
+                        setActiveLanguage(tab.language || detectLanguage(displayName));
                       }}
                       className={`flex items-center gap-2 px-3.5 py-2 text-xs font-mono border-r border-[#2B2B2B] cursor-pointer select-none relative transition-colors ${
                         isActive
@@ -586,7 +618,7 @@ export default function DeveloperCodeEditor({
                       >
                         {badge.label}
                       </span>
-                      <span className="truncate max-w-[140px]">{tab.path || tab.name}</span>
+                      <span className="truncate max-w-[140px]">{displayName}</span>
 
                       <button
                         onClick={(e) => handleCloseTab(e, tabId)}
@@ -624,7 +656,7 @@ export default function DeveloperCodeEditor({
                 <ChevronRightIcon className="w-3 h-3 text-[#555555]" />
                 <span className="truncate max-w-[150px]">{currentTaskTitle}</span>
                 <ChevronRightIcon className="w-3 h-3 text-[#555555]" />
-                <span className="text-[#CCCCCC]">{activeFile.path || activeFile.name}</span>
+                <span className="text-[#CCCCCC]">{activeFile.path || activeFile.name || activeFile.fileName}</span>
                 {isDirty && <span className="text-amber-400 font-bold ml-1">●</span>}
                 {saveSuccess && (
                   <span className="ml-auto text-emerald-400 flex items-center gap-1 text-[10px]">
@@ -635,14 +667,14 @@ export default function DeveloperCodeEditor({
             )}
 
             {/* Editor Body */}
-            <div className="flex-1 min-h-0 bg-[#1E1E1E]">
+            <div className="flex-1 min-w-0 min-h-0 bg-[#1E1E1E]">
               {activeFile ? (
                 <CodeMirrorEditor
                   value={editorCode}
                   onChange={handleCodeChange}
                   onCursorChange={setCursor}
                   onSave={handleSaveFile}
-                  filename={activeFile.path || activeFile.name}
+                  filename={activeFile.path || activeFile.name || activeFile.fileName}
                   language={activeLanguage}
                 />
               ) : (

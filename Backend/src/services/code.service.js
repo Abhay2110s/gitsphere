@@ -30,8 +30,20 @@ const verifyTaskAccess = async (taskId, user, requireWrite = false) => {
 
   // Regular User write permission check
   if (user.role !== 'MANAGER' && requireWrite) {
-    if (!task.assignedTo || !task.assignedTo.equals(user._id)) {
-      throw new AppError('Permission denied. You can only create or edit code in your assigned tasks.', 403, 'FORBIDDEN');
+    const assignedId = task.assignedTo?._id || task.assignedTo;
+    const userId = user._id || user.id;
+    const isAssigned =
+      assignedId &&
+      (assignedId.equals
+        ? assignedId.equals(userId)
+        : String(assignedId) === String(userId));
+
+    if (!isAssigned) {
+      throw new AppError(
+        'Permission denied. You can only create or edit code in your assigned tasks.',
+        403,
+        'FORBIDDEN'
+      );
     }
   }
 
@@ -68,8 +80,20 @@ const verifyFileAccess = async (fileId, user, requireWrite = false) => {
 
   // Regular User write permission check
   if (user.role !== 'MANAGER' && requireWrite) {
-    if (!task.assignedTo || !task.assignedTo.equals(user._id)) {
-      throw new AppError('Permission denied. You can only edit code in tasks assigned to you.', 403, 'FORBIDDEN');
+    const assignedId = task.assignedTo?._id || task.assignedTo;
+    const userId = user._id || user.id;
+    const isAssigned =
+      assignedId &&
+      (assignedId.equals
+        ? assignedId.equals(userId)
+        : String(assignedId) === String(userId));
+
+    if (!isAssigned) {
+      throw new AppError(
+        'Permission denied. You can only edit code in tasks assigned to you.',
+        403,
+        'FORBIDDEN'
+      );
     }
   }
 
@@ -82,8 +106,26 @@ const verifyFileAccess = async (fileId, user, requireWrite = false) => {
 export const createFile = async (taskId, user, fileData) => {
   const { task, project } = await verifyTaskAccess(taskId, user, true);
 
-  const filePath = fileData.filePath || '/';
-  const fileName = fileData.fileName.trim();
+  let rawName = fileData.fileName || fileData.path || fileData.name || '';
+  if (typeof rawName !== 'string') {
+    rawName = String(rawName);
+  }
+  const normalized = rawName.trim().replace(/\\/g, '/').replace(/^\/+/, '');
+  const lastSlashIndex = normalized.lastIndexOf('/');
+
+  let fileName = normalized;
+  let filePath = fileData.filePath || '/';
+
+  if (lastSlashIndex !== -1) {
+    fileName = normalized.slice(lastSlashIndex + 1);
+    if (!fileData.filePath || fileData.filePath === '/') {
+      filePath = '/' + normalized.slice(0, lastSlashIndex);
+    }
+  }
+
+  if (!fileName) {
+    throw new AppError('File name is required', 400, 'VALIDATION_ERROR');
+  }
 
   // Check unique filename in the same directory of this task
   const existingFile = await CodeFile.findOne({

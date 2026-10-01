@@ -53,16 +53,28 @@ const codeFileSchema = new mongoose.Schema(
   {
     timestamps: true,
     toJSON: {
+      virtuals: true,
       transform(doc, ret) {
         ret.id = ret._id;
+        ret.name = ret.fileName;
+        ret.path =
+          !ret.filePath || ret.filePath === '/'
+            ? ret.fileName
+            : `${ret.filePath.replace(/^\/+|\/+$/g, '')}/${ret.fileName}`;
         delete ret._id;
         delete ret.__v;
         return ret;
       }
     },
     toObject: {
+      virtuals: true,
       transform(doc, ret) {
         ret.id = ret._id;
+        ret.name = ret.fileName;
+        ret.path =
+          !ret.filePath || ret.filePath === '/'
+            ? ret.fileName
+            : `${ret.filePath.replace(/^\/+|\/+$/g, '')}/${ret.fileName}`;
         delete ret._id;
         delete ret.__v;
         return ret;
@@ -70,6 +82,18 @@ const codeFileSchema = new mongoose.Schema(
     }
   }
 );
+
+codeFileSchema.virtual('name').get(function () {
+  return this.fileName;
+});
+
+codeFileSchema.virtual('path').get(function () {
+  if (!this.filePath || this.filePath === '/') {
+    return this.fileName;
+  }
+  const cleanPath = this.filePath.replace(/^\/+|\/+$/g, '');
+  return `${cleanPath}/${this.fileName}`;
+});
 
 // Compound unique index ensuring unique file paths within the same task
 codeFileSchema.index({ task: 1, filePath: 1, fileName: 1 }, { unique: true });

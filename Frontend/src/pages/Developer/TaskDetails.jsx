@@ -53,14 +53,23 @@ export default function TaskDetails({
       .finally(() => setLoading(false));
   };
 
+  const [statusError, setStatusError] = useState(null);
+  const [statusSuccess, setStatusSuccess] = useState(null);
+
   const handleStatusChange = async (newStatus) => {
-    if (!task) return;
+    if (!task || newStatus === task.status) return;
     try {
       setUpdating(true);
+      setStatusError(null);
+      setStatusSuccess(null);
       await tasksApi.updateTaskStatus(taskId, newStatus);
       setTask((prev) => ({ ...prev, status: newStatus }));
+      setStatusSuccess(`Task status successfully updated to ${newStatus.replace('_', ' ')}`);
+      setTimeout(() => setStatusSuccess(null), 3500);
     } catch (err) {
       console.error('Failed to update status:', err);
+      setStatusError(err?.message || 'Failed to update status');
+      setTimeout(() => setStatusError(null), 5000);
     } finally {
       setUpdating(false);
     }
@@ -181,19 +190,68 @@ export default function TaskDetails({
           </div>
           <div>
             <span className="text-[#666666] block">Change Status</span>
-            <select
-              value={task.status}
-              disabled={updating}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className="mt-1 bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded px-2 py-1 outline-none focus:border-white transition-colors cursor-pointer"
-            >
-              <option value="TODO">To Do</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="BLOCKED">Blocked</option>
-            </select>
+            {task.status === 'COMPLETED' ? (
+              <div className="mt-1">
+                <span className="inline-block text-[11px] font-mono text-emerald-400 bg-emerald-950/20 border border-emerald-900/40 px-2.5 py-1 rounded">
+                  Completed (Approved)
+                </span>
+                <p className="text-[10px] text-[#666666] mt-1">
+                  Manager approved and closed this task
+                </p>
+              </div>
+            ) : task.status === 'IN_REVIEW' ? (
+              <div className="mt-1">
+                <span className="inline-block text-[11px] font-mono text-amber-400 bg-amber-950/20 border border-amber-900/40 px-2.5 py-1 rounded">
+                  Under Review
+                </span>
+                <p className="text-[10px] text-[#666666] mt-1">
+                  Awaiting review and approval from Project Manager
+                </p>
+              </div>
+            ) : (
+              <div className="mt-1">
+                <select
+                  value={task.status}
+                  disabled={updating}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="bg-[#141414] border border-[#2A2A2A] text-white text-xs font-mono rounded px-2.5 py-1.5 outline-none focus:border-white transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {task.status === 'TODO' && (
+                    <>
+                      <option value="TODO">To Do</option>
+                      <option value="IN_PROGRESS">Start Work (In Progress)</option>
+                    </>
+                  )}
+                  {task.status === 'IN_PROGRESS' && (
+                    <>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="TODO">Move back to To Do</option>
+                      <option value="IN_REVIEW">Submit for Review</option>
+                    </>
+                  )}
+                  {task.status === 'CHANGES_REQUESTED' && (
+                    <>
+                      <option value="CHANGES_REQUESTED">Changes Requested</option>
+                      <option value="IN_PROGRESS">Resume Work (In Progress)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            )}
           </div>
         </div>
+
+        {statusError && (
+          <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-800/40 text-xs text-rose-400 font-mono animate-fade-in">
+            {statusError}
+          </div>
+        )}
+
+        {statusSuccess && (
+          <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-800/40 text-xs text-emerald-400 font-mono animate-fade-in">
+            {statusSuccess}
+          </div>
+        )}
       </div>
     </div>
   );
