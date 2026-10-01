@@ -25,6 +25,7 @@ export const connectDB = async () => {
   try {
     cachedConnection = mongoose.connect(process.env.MONGODB_URI, {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
     });
     const conn = await cachedConnection;
     console.log(`[Database] MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);

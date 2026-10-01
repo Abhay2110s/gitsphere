@@ -32,15 +32,23 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Handle favicon requests immediately
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // Ensure MongoDB is connected in serverless / lambda environments
 app.use(async (req, res, next) => {
+  // Allow root, api, and swagger docs without blocking on DB
+  if (req.path === '/' || req.path === '/api' || req.path.startsWith('/api-docs')) {
+    return next();
+  }
+
   if (mongoose.connection.readyState !== 1) {
     try {
       await connectDB();
     } catch (err) {
       return res.status(500).json({
         success: false,
-        message: 'Database connection failed',
+        message: 'Database connection failed. Verify MONGODB_URI in Vercel environment variables and Atlas IP whitelist (0.0.0.0/0).',
         error: err.message
       });
     }
