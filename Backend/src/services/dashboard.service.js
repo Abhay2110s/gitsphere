@@ -9,7 +9,7 @@ import Notification from '../models/Notification.js';
  * Get aggregated metrics for Manager Dashboard (Section 34)
  */
 export const getManagerDashboard = async (managerId) => {
-  const managerProjects = await Project.find({ createdBy: managerId }).select('_id status members');
+  const managerProjects = await Project.find({ createdBy: managerId }).select('_id status members').lean();
   const projectIds = managerProjects.map((p) => p._id);
 
   // Total and Active Projects
@@ -60,7 +60,8 @@ export const getManagerDashboard = async (managerId) => {
     .populate('developer', 'name email avatar role')
     .populate('task', 'title status priority')
     .populate('project', 'name')
-    .sort({ submittedAt: -1, createdAt: -1 });
+    .sort({ submittedAt: -1, createdAt: -1 })
+    .lean();
 
   // Recent contributions across all statuses
   const recentContributions = await Contribution.find({
@@ -70,7 +71,8 @@ export const getManagerDashboard = async (managerId) => {
     .populate('task', 'title status priority')
     .populate('project', 'name')
     .sort({ submittedAt: -1, createdAt: -1 })
-    .limit(10);
+    .limit(10)
+    .lean();
 
   // Recent Activity in manager's projects
   const recentActivity = await ActivityLog.find({ project: { $in: projectIds } })
@@ -78,7 +80,8 @@ export const getManagerDashboard = async (managerId) => {
     .populate('project', 'name')
     .populate('task', 'title status')
     .sort({ createdAt: -1 })
-    .limit(10);
+    .limit(10)
+    .lean();
 
   return {
     totalProjects,
@@ -129,7 +132,8 @@ export const getUserDashboard = async (userId) => {
   const recentProjects = await Project.find({ members: userId })
     .populate('createdBy', 'name email avatar')
     .sort({ updatedAt: -1 })
-    .limit(5);
+    .limit(5)
+    .lean();
 
   const projectIds = recentProjects.map((p) => p._id);
 
@@ -139,7 +143,8 @@ export const getUserDashboard = async (userId) => {
     .populate('project', 'name')
     .populate('task', 'title')
     .sort({ createdAt: -1 })
-    .limit(5);
+    .limit(5)
+    .lean();
 
   const unreadNotificationsCount = await Notification.countDocuments({
     user: userId,
@@ -154,7 +159,8 @@ export const getUserDashboard = async (userId) => {
     .populate('project', 'name')
     .populate('task', 'title status')
     .sort({ createdAt: -1 })
-    .limit(10);
+    .limit(10)
+    .lean();
 
   return {
     assignedTasks,

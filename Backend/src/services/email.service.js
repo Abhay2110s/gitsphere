@@ -10,28 +10,46 @@ export const getTransporter = () => {
   if (transporter) return transporter;
 
   const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
   const user = process.env.SMTP_USER || process.env.EMAIL_USER;
   const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
-  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  const emailService = process.env.EMAIL_SERVICE || 'gmail';
 
   if (user && pass) {
-    if (host) {
+    if (emailService.toLowerCase() === 'gmail' || host === 'smtp.gmail.com') {
+      // High-performance Gmail configuration with direct TLS and connection pooling
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+        pool: true,
+        maxConnections: 3,
+        connectionTimeout: 8000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000
+      });
+    } else if (host) {
+      const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+      const secure = process.env.SMTP_SECURE === 'true' || port === 465;
       transporter = nodemailer.createTransport({
         host,
         port,
         secure,
-        auth: { user, pass }
+        auth: { user, pass },
+        pool: true,
+        maxConnections: 3,
+        connectionTimeout: 8000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000
       });
     } else {
-      // Default to service-based (e.g. Gmail)
       transporter = nodemailer.createTransport({
-        service: process.env.EMAIL_SERVICE || 'gmail',
-        auth: { user, pass }
+        service: emailService,
+        auth: { user, pass },
+        pool: true,
+        maxConnections: 3
       });
     }
   } else {
-    // Development / Test fallback: create transport that logs to console or suppresses
+    // Development / Test fallback
     transporter = nodemailer.createTransport({
       streamTransport: true,
       newline: 'windows',

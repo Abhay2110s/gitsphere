@@ -63,7 +63,8 @@ export const getProjects = async (user, queryParams = {}) => {
       .populate('members', 'name email avatar')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit),
+      .limit(limit)
+      .lean(),
     Project.countDocuments(query)
   ]);
 

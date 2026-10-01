@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import { AppError } from '../utils/response.js';
 import { sendOtpEmail } from './email.service.js';
+import { dispatchBackgroundTask } from '../utils/backgroundTask.js';
 
 /**
  * Register a new user and generate a 6-digit verification code.
@@ -43,14 +44,14 @@ export const register = async ({ name, email, password, avatar = '', bio = '', r
     lastSeen: new Date()
   });
 
-  // Dispatch OTP email in background
-  sendOtpEmail({
-    email: user.email,
-    name: user.name,
-    otp
-  }).catch((err) => {
-    console.error('[Nodemailer] Background OTP email error:', err.message);
-  });
+  // Dispatch OTP email via serverless-safe background task for instant response (<100ms)
+  dispatchBackgroundTask(
+    sendOtpEmail({
+      email: user.email,
+      name: user.name,
+      otp
+    })
+  );
 
   return { user, otp };
 };
@@ -108,14 +109,14 @@ export const resendOtp = async ({ email }) => {
   user.otpExpires = otpExpires;
   await user.save({ validateBeforeSave: false });
 
-  // Dispatch OTP email in background
-  sendOtpEmail({
-    email: user.email,
-    name: user.name,
-    otp
-  }).catch((err) => {
-    console.error('[Nodemailer] Background OTP resend error:', err.message);
-  });
+  // Dispatch OTP email via serverless-safe background task for instant response (<100ms)
+  dispatchBackgroundTask(
+    sendOtpEmail({
+      email: user.email,
+      name: user.name,
+      otp
+    })
+  );
 
   return { message: 'New verification code sent successfully', otp };
 };
@@ -199,13 +200,13 @@ export const forgotPassword = async ({ email }) => {
   user.otpExpires = otpExpires;
   await user.save({ validateBeforeSave: false });
 
-  sendOtpEmail({
-    email: user.email,
-    name: user.name,
-    otp
-  }).catch((err) => {
-    console.error('[Nodemailer] Background Forgot Password OTP error:', err.message);
-  });
+  dispatchBackgroundTask(
+    sendOtpEmail({
+      email: user.email,
+      name: user.name,
+      otp
+    })
+  );
 
   return { message: 'Password reset code sent to your email', email: normalizedEmail };
 };
