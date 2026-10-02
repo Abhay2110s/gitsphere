@@ -79,7 +79,6 @@ export default function Messages() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader
           title="Developer Messages"
-          description="Communicate 1-on-1 with your project manager and team members separated by project."
         />
       </div>
 

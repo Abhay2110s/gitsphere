@@ -96,9 +96,6 @@ export default function Messages() {
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
             PROJECT MESSAGES
           </h1>
-          <p className="mt-1 text-xs sm:text-sm text-[#888888]">
-            Communicate 1-on-1 with individual developers separated by project. Messages auto-expire after 10 days.
-          </p>
         </div>
       </div>
 
@@ -164,14 +161,14 @@ export default function Messages() {
                     key={memberId || idx}
                     onClick={() => setSelectedDeveloperId(memberId)}
                     className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${isSelected
-                        ? 'bg-[#181818] border border-[#3A3A3A] shadow'
-                        : 'hover:bg-[#111111] border border-transparent text-[#888888]'
+                      ? 'bg-[#181818] border border-[#3A3A3A] shadow'
+                      : 'hover:bg-[#111111] border border-transparent text-[#888888]'
                       }`}
                   >
                     <div
                       className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isSelected
-                          ? 'bg-blue-500 text-white shadow-lg'
-                          : 'bg-[#141414] border border-[#262626] text-[#777777]'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-[#141414] border border-[#262626] text-[#777777]'
                         }`}
                     >
                       <UserIcon className="w-4 h-4" />
@@ -278,8 +275,8 @@ export default function Messages() {
                           </span>
                           <span
                             className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${roleLabel === 'MANAGER'
-                                ? 'bg-purple-950/40 text-purple-400 border-purple-800/40'
-                                : 'bg-blue-950/40 text-blue-400 border-blue-800/40'
+                              ? 'bg-purple-950/40 text-purple-400 border-purple-800/40'
+                              : 'bg-blue-950/40 text-blue-400 border-blue-800/40'
                               }`}
                           >
                             {roleLabel === 'MANAGER' ? 'MGR' : 'DEV'}
@@ -290,8 +287,8 @@ export default function Messages() {
                         </div>
                         <div
                           className={`max-w-lg px-4 py-2.5 rounded-2xl text-xs leading-relaxed break-words ${isMine
-                              ? 'bg-white text-black font-medium rounded-br-none shadow-md'
-                              : 'bg-[#141414] border border-[#262626] text-[#E0E0E0] rounded-bl-none'
+                            ? 'bg-white text-black font-medium rounded-br-none shadow-md'
+                            : 'bg-[#141414] border border-[#262626] text-[#E0E0E0] rounded-bl-none'
                             }`}
                         >
                           {msg.content}
