@@ -1,46 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProjects } from '../../hooks/useProjects';
-import { useTasks } from '../../hooks/useTasks';
 import { useAuth } from '../../hooks/useAuth';
 import { useMessages } from '../../hooks/useMessages';
 import PageHeader from '../../components/developer/PageHeader';
 import MessageList from '../../components/developer/MessageList';
 import MessageComposer from '../../components/developer/MessageComposer';
 import EmptyState from '../../components/developer/EmptyState';
-import { MessageIcon, FolderIcon, TaskCheckIcon, ClockIcon } from '../../components/common/Icons';
+import { MessageIcon, FolderIcon, ClockIcon, UserIcon } from '../../components/common/Icons';
 
 export default function Messages() {
   const { user } = useAuth();
-  const { projects } = useProjects();
-  const { tasks } = useTasks();
+  const { projects, loading: projectsLoading } = useProjects();
+  const [selectedProjectId, setSelectedProjectId] = useState('');
 
-  const [channelType, setChannelType] = useState('project'); // 'project' | 'task'
-  const [selectedChannelId, setSelectedChannelId] = useState('');
+  // Auto-select first project when projects load
+  useEffect(() => {
+    if (projects.length > 0 && !selectedProjectId) {
+      setSelectedProjectId(projects[0]._id || projects[0].id);
+    }
+  }, [projects, selectedProjectId]);
 
-  const effectiveChannelId =
-    selectedChannelId ||
-    (channelType === 'project'
-      ? (projects.length > 0 ? projects[0]._id || projects[0].id : '')
-      : (tasks.length > 0 ? tasks[0]._id || tasks[0].id : ''));
+  const effectiveProjectId = selectedProjectId || (projects.length > 0 ? (projects[0]._id || projects[0].id) : '');
 
   const { messages, loading, error, refetch, sendMessage } = useMessages(
-    channelType,
-    effectiveChannelId
+    'project',
+    effectiveProjectId
   );
 
-  const activeChannelName =
-    channelType === 'project'
-      ? projects.find((p) => (p._id || p.id) === effectiveChannelId)?.name || 'Project Channel'
-      : tasks.find((t) => (t._id || t.id) === effectiveChannelId)?.title || 'Task Channel';
-
-  const channelsList = channelType === 'project' ? projects : tasks;
+  const activeProject = projects.find((p) => (p._id || p.id) === effectiveProjectId);
+  const managerName = activeProject?.createdBy?.name || 'Project Manager';
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader
           title="Developer Messages"
-          description="Collaborative communication with managers and team members organized by project and task tickets."
+          description="Collaborative communication with your project manager and team members."
         />
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 text-xs font-mono shrink-0 self-start sm:self-auto">
           <ClockIcon className="w-3.5 h-3.5" />
@@ -48,75 +43,52 @@ export default function Messages() {
         </div>
       </div>
 
-      <div className="border border-[#222222] rounded-2xl overflow-hidden bg-[#0A0A0A] grid grid-cols-1 lg:grid-cols-12 min-h-[550px]">
-        {/* Left Column: Channels */}
+      <div className="border border-[#222222] rounded-2xl overflow-hidden bg-[#0A0A0A] grid grid-cols-1 lg:grid-cols-12 min-h-[580px] shadow-2xl">
+        {/* Left Column: Project Channels */}
         <div className="lg:col-span-4 border-r border-[#222222] bg-[#070707] flex flex-col">
-          {/* Channel Type Toggle */}
-          <div className="p-3 border-b border-[#1C1C1C] flex gap-1">
-            <button
-              onClick={() => {
-                setChannelType('project');
-                setSelectedChannelId(projects[0]?._id || projects[0]?.id || '');
-              }}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
-                channelType === 'project'
-                  ? 'bg-white text-black'
-                  : 'text-[#888888] hover:text-white hover:bg-[#141414]'
-              }`}
-            >
-              <FolderIcon className="w-3.5 h-3.5" />
-              <span>Projects ({projects.length})</span>
-            </button>
-            <button
-              onClick={() => {
-                setChannelType('task');
-                setSelectedChannelId(tasks[0]?._id || tasks[0]?.id || '');
-              }}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
-                channelType === 'task'
-                  ? 'bg-white text-black'
-                  : 'text-[#888888] hover:text-white hover:bg-[#141414]'
-              }`}
-            >
-              <TaskCheckIcon className="w-3.5 h-3.5" />
-              <span>Tasks ({tasks.length})</span>
-            </button>
+          <div className="p-4 border-b border-[#1C1C1C] flex items-center justify-between">
+            <span className="text-xs font-mono font-bold tracking-wider text-[#AAAAAA] uppercase">
+              Project Channels
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#141414] border border-[#262626] text-[#888888]">
+              {projects.length} Projects
+            </span>
           </div>
 
-          {/* Channels List */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {channelsList.length === 0 ? (
+          {/* Projects List */}
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
+            {projectsLoading ? (
               <p className="text-xs text-[#666666] font-mono p-4 text-center">
-                No active {channelType}s yet.
+                Loading projects...
               </p>
+            ) : projects.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[#666666] font-mono">
+                You are not assigned to any projects yet.
+              </div>
             ) : (
-              channelsList.map((item) => {
-                const itemId = item._id || item.id;
-                const isSelected = effectiveChannelId === itemId;
-                const title = item.name || item.title;
+              projects.map((project) => {
+                const projectId = project._id || project.id;
+                const isSelected = effectiveProjectId === projectId;
+                const pManager = project.createdBy?.name || 'Manager';
 
                 return (
                   <button
-                    key={itemId}
-                    onClick={() => setSelectedChannelId(itemId)}
-                    className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${
+                    key={projectId}
+                    onClick={() => setSelectedProjectId(projectId)}
+                    className={`w-full text-left p-3.5 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${
                       isSelected
-                        ? 'bg-[#181818] border border-[#333333]'
-                        : 'hover:bg-[#111111] text-[#888888]'
+                        ? 'bg-[#181818] border border-[#333333] shadow'
+                        : 'hover:bg-[#111111] border border-transparent text-[#888888]'
                     }`}
                   >
                     <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                         isSelected
                           ? 'bg-white text-black'
                           : 'bg-[#141414] border border-[#222222] text-[#666666]'
                       }`}
                     >
-                      {channelType === 'project' ? (
-                        <FolderIcon className="w-3.5 h-3.5" />
-                      ) : (
-                        <TaskCheckIcon className="w-3.5 h-3.5" />
-                      )}
+                      <FolderIcon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div
@@ -124,10 +96,11 @@ export default function Messages() {
                           isSelected ? 'text-white' : 'text-[#AAAAAA]'
                         }`}
                       >
-                        {title}
+                        {project.name}
                       </div>
-                      <div className="text-[10px] font-mono text-[#555555] uppercase mt-0.5">
-                        {channelType} channel
+                      <div className="text-[10px] font-mono text-[#666666] truncate mt-0.5 flex items-center gap-1.5">
+                        <UserIcon className="w-2.5 h-2.5 text-purple-400" />
+                        <span>Lead: {pManager}</span>
                       </div>
                     </div>
                   </button>
@@ -139,20 +112,31 @@ export default function Messages() {
 
         {/* Right Column: Chat Window */}
         <div className="lg:col-span-8 flex flex-col justify-between bg-[#0A0A0A]">
-          {effectiveChannelId ? (
+          {effectiveProjectId && activeProject ? (
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-[#1C1C1C] bg-[#0C0C0C] flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-bold text-white tracking-wide truncate">
-                    {activeChannelName}
-                  </h3>
-                  <span className="text-[10px] font-mono text-[#666666] uppercase">
-                    {channelType} message stream
-                  </span>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#181818] border border-[#2A2A2A] flex items-center justify-center text-white">
+                    <FolderIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white tracking-wide truncate max-w-sm">
+                      {activeProject.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] font-mono text-purple-400 font-bold">
+                        Manager: {managerName}
+                      </span>
+                      <span className="text-[10px] font-mono text-[#666666]">
+                        • {activeProject.members?.length || 0} Developers
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
                 {loading && (
-                  <span className="text-[10px] font-mono text-[#888888]">Loading...</span>
+                  <span className="text-[10px] font-mono text-[#888888] animate-pulse">Syncing...</span>
                 )}
               </div>
 
@@ -172,14 +156,17 @@ export default function Messages() {
               />
 
               {/* Message Composer */}
-              <MessageComposer onSend={sendMessage} />
+              <MessageComposer
+                onSend={sendMessage}
+                disabled={!effectiveProjectId}
+              />
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               <EmptyState
                 icon={MessageIcon}
-                title="NO CONVERSATION SELECTED"
-                description="Select a project or task from the sidebar to view messages and collaborate."
+                title="NO PROJECT SELECTED"
+                description="Select a project channel to communicate directly with your project manager and team."
                 className="border-0 bg-transparent"
               />
             </div>
