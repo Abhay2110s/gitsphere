@@ -7,6 +7,7 @@ export default function DeveloperLayout({
   onNavigate,
   onLogout,
   unreadNotificationsCount = 0,
+  hasUnreadMessages = false,
   user = null,
   children,
 }) {
@@ -21,6 +22,7 @@ export default function DeveloperLayout({
           onNavigate={onNavigate}
           onLogout={onLogout}
           unreadNotificationsCount={unreadNotificationsCount}
+          hasUnreadMessages={hasUnreadMessages}
           user={user}
         />
       </aside>
@@ -38,6 +40,7 @@ export default function DeveloperLayout({
               onNavigate={onNavigate}
               onLogout={onLogout}
               unreadNotificationsCount={unreadNotificationsCount}
+              hasUnreadMessages={hasUnreadMessages}
               user={user}
               isMobile
               onCloseMobile={() => setMobileMenuOpen(false)}

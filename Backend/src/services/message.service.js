@@ -4,6 +4,7 @@ import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
+import { getIO } from '../sockets/socket.js';
 
 // 10-day auto-expiry cutoff helper (864,000,000 ms)
 const getTenDaysCutoff = () => new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
@@ -120,6 +121,21 @@ export const createMessage = async (user, data) => {
     { path: 'sender', select: 'name email avatar role' },
     { path: 'recipient', select: 'name email avatar role' }
   ]);
+
+  // Real-time Socket.IO emission to update recipient's sidebar and active room
+  try {
+    const io = getIO();
+    const roomName = taskId ? `chat:task:${taskId}` : `chat:project:${projectId}`;
+    io.to(roomName).emit('chat:message', populated);
+
+    if (recipientId) {
+      io.to(`user:${recipientId.toString()}`).emit('message:new', populated);
+    } else {
+      io.to(`project:${projectId.toString()}`).emit('message:new', populated);
+    }
+  } catch {
+    // Socket.IO may not be active during unit tests
+  }
 
   return populated;
 };
@@ -282,28 +298,39 @@ export const deleteMessage = async (messageId, user) => {
 
 /**
  * Mark messages as read by the current user
- * Marks all unread messages in a project or task chat as read for this user
+ * Marks unread messages in a project, task, by specific IDs, or across all accessible projects
  */
-export const markMessagesAsRead = async (user, { projectId, taskId }) => {
-  if (projectId) {
-    await verifyProjectAccess(projectId, user);
-  }
-
+export const markMessagesAsRead = async (user, { projectId, taskId, messageIds } = {}) => {
   const query = {
     readBy: { $ne: user._id }, // Only messages not yet read by this user
+    sender: { $ne: user._id },
     createdAt: { $gte: getTenDaysCutoff() }
   };
 
-  if (taskId) {
+  if (Array.isArray(messageIds) && messageIds.length > 0) {
+    const validIds = messageIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    if (validIds.length > 0) {
+      query._id = { $in: validIds };
+    }
+  } else if (taskId) {
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
       throw new AppError('Invalid Task ID format', 400, 'INVALID_ID');
     }
     query.task = taskId;
   } else if (projectId) {
+    await verifyProjectAccess(projectId, user);
     query.project = projectId;
-    query.task = null; // Only project-level messages
   } else {
-    throw new AppError('Either projectId or taskId is required', 400, 'MISSING_PARAMS');
+    // Mark all accessible unread messages as read across all projects for this user
+    let userProjectIds = [];
+    if (user.role === 'MANAGER') {
+      const managerProjects = await Project.find({ createdBy: user._id }).select('_id').lean();
+      userProjectIds = managerProjects.map((p) => p._id);
+    } else {
+      const memberProjects = await Project.find({ members: user._id }).select('_id').lean();
+      userProjectIds = memberProjects.map((p) => p._id);
+    }
+    query.project = { $in: userProjectIds };
   }
 
   const result = await Message.updateMany(query, {
@@ -314,9 +341,9 @@ export const markMessagesAsRead = async (user, { projectId, taskId }) => {
 };
 
 /**
- * Get unread message count for the user in a project or task
+ * Get unread message count for the user in a project, task, or across all accessible projects
  */
-export const getUnreadCount = async (user, { projectId, taskId }) => {
+export const getUnreadCount = async (user, { projectId, taskId } = {}) => {
   const query = {
     readBy: { $ne: user._id },
     sender: { $ne: user._id }, // Don't count own messages
@@ -329,7 +356,25 @@ export const getUnreadCount = async (user, { projectId, taskId }) => {
     query.project = projectId;
     query.task = null;
   } else {
-    throw new AppError('Either projectId or taskId is required', 400, 'MISSING_PARAMS');
+    // Global unread count across all user's accessible projects
+    let userProjectIds = [];
+    if (user.role === 'MANAGER') {
+      const managerProjects = await Project.find({ createdBy: user._id }).select('_id').lean();
+      userProjectIds = managerProjects.map((p) => p._id);
+    } else {
+      const memberProjects = await Project.find({ members: user._id }).select('_id').lean();
+      userProjectIds = memberProjects.map((p) => p._id);
+    }
+
+    if (userProjectIds.length === 0) {
+      return { unreadCount: 0 };
+    }
+
+    query.project = { $in: userProjectIds };
+    query.$or = [
+      { recipient: null },
+      { recipient: user._id }
+    ];
   }
 
   const count = await Message.countDocuments(query);

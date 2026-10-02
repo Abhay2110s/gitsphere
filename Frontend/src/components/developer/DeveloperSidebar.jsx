@@ -32,6 +32,7 @@ export default function DeveloperSidebar({
   onNavigate,
   onLogout,
   unreadNotificationsCount = 0,
+  hasUnreadMessages = false,
   user = null,
   isMobile = false,
   onCloseMobile,
@@ -103,6 +104,12 @@ export default function DeveloperSidebar({
                 <Icon className={`w-4 h-4 ${isActive ? 'text-black' : 'text-[#666666]'}`} />
                 <span>{item.name}</span>
               </div>
+              {item.id === 'messages' && hasUnreadMessages && (
+                <span className="relative flex h-2 w-2" title="New unread messages">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.9)]"></span>
+                </span>
+              )}
               {hasBadge && (
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${

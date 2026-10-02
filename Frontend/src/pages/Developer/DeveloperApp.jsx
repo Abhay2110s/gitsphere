@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DeveloperLayout from '../../components/developer/DeveloperLayout';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 
 // Main 10 Sections
 import Dashboard from './Dashboard';
@@ -47,6 +48,7 @@ export default function DeveloperApp({ initialSection = 'dashboard', onNavigateT
   const { unreadCount } = useNotifications();
 
   const [currentSection, setCurrentSection] = useState(() => getSectionFromUrl(initialSection));
+  const { hasUnread: hasUnreadMessages } = useUnreadMessages(currentSection === 'messages');
 
   // Selected item state for detail views
   const [selectedProject, setSelectedProject] = useState(null);
@@ -117,6 +119,7 @@ export default function DeveloperApp({ initialSection = 'dashboard', onNavigateT
       onNavigate={handleNavigate}
       onLogout={handleLogout}
       unreadNotificationsCount={unreadCount}
+      hasUnreadMessages={hasUnreadMessages}
       user={user}
     >
       {/* 1. Dashboard */}

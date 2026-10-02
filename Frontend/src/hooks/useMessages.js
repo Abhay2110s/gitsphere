@@ -38,6 +38,9 @@ export function useMessages(channelType = 'project', channelId = null, recipient
       const unreadIds = newMessages.map((m) => m._id || m.id).filter(Boolean);
       if (unreadIds.length > 0) {
         messagesApi.markAsRead(unreadIds).catch(() => {});
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gitsphere:messages-read'));
+        }
       }
     } catch (err) {
       if (!isBackground) {

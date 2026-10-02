@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 import ManagerLayout from '../../components/manager/ManagerLayout';
 import Dashboard from './Dashboard';
 import Projects from './Projects';
@@ -16,6 +17,7 @@ import Settings from './Settings';
 export default function ManagerApp({ initialSection = 'dashboard', onNavigateToLanding }) {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
+  const { hasUnread: hasUnreadMessages } = useUnreadMessages(currentSection === 'messages');
   const [currentSection, setCurrentSection] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
@@ -59,6 +61,7 @@ export default function ManagerApp({ initialSection = 'dashboard', onNavigateToL
       onNavigate={handleNavigate}
       onLogout={handleLogout}
       unreadNotificationsCount={unreadCount}
+      hasUnreadMessages={hasUnreadMessages}
       user={user}
     >
       {currentSection === 'dashboard' && (
