@@ -1,14 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 
 export default function MessageList({ messages = [], currentUserId }) {
-  const bottomRef = useRef(null);
-
-  useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-
   if (!messages || messages.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#666666]">
@@ -70,7 +62,6 @@ export default function MessageList({ messages = [], currentUserId }) {
           </div>
         );
       })}
-      <div ref={bottomRef} />
     </div>
   );
 }

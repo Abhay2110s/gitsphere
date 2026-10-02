@@ -18,7 +18,6 @@ export default function Messages() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedDeveloperId, setSelectedDeveloperId] = useState(''); // '' means project broadcast, or dev._id for 1-on-1
   const [searchQuery, setSearchQuery] = useState('');
-  const messagesEndRef = useRef(null);
 
   // Auto-select first project when projects load
   useEffect(() => {
@@ -57,13 +56,6 @@ export default function Messages() {
 
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
-
-  // Auto-scroll to latest message
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
 
   const activeDeveloper = currentProject?.members?.find(
     (m) => String(m._id || m.id || m) === String(selectedDeveloperId)
@@ -321,7 +313,6 @@ export default function Messages() {
                     );
                   })
                 )}
-                <div ref={messagesEndRef} />
               </div>
 
               {/* Message Composer */}

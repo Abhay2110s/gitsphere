@@ -26,7 +26,13 @@ export function useMessages(channelType = 'project', channelId = null, recipient
         res = await messagesApi.getTaskMessages(targetId);
       }
       const newMessages = Array.isArray(res) ? res : res?.messages || [];
-      setMessages(newMessages);
+      setMessages((prev) => {
+        if (prev.length === newMessages.length) {
+          const isSame = prev.every((m, idx) => (m._id || m.id) === (newMessages[idx]?._id || newMessages[idx]?.id));
+          if (isSame) return prev;
+        }
+        return newMessages;
+      });
 
       // Auto-mark unread messages as read
       const unreadIds = newMessages.map((m) => m._id || m.id).filter(Boolean);
