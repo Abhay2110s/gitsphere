@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useProjects } from '../../hooks/useProjects';
 import { useMessages } from '../../hooks/useMessages';
-import { tasksApi } from '../../api/tasks.api';
+import { projectsApi } from '../../api/projects.api';
 import EmptyState from '../../components/manager/EmptyState';
 import {
   MessageIcon,
@@ -41,7 +41,7 @@ export default function Messages() {
 
     let isMounted = true;
     setTasksLoading(true);
-    tasksApi
+    projectsApi
       .getProjectTasks(selectedProjectId)
       .then((res) => {
         if (!isMounted) return;
