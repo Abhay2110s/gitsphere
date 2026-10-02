@@ -17,7 +17,6 @@ import Settings from './Settings';
 export default function ManagerApp({ initialSection = 'dashboard', onNavigateToLanding }) {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
-  const { hasUnread: hasUnreadMessages } = useUnreadMessages(currentSection === 'messages');
   const [currentSection, setCurrentSection] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
@@ -35,6 +34,8 @@ export default function ManagerApp({ initialSection = 'dashboard', onNavigateToL
     }
     return initialSection;
   });
+
+  const { hasUnread: hasUnreadMessages } = useUnreadMessages(currentSection === 'messages');
 
   const [selectedProject, setSelectedProject] = useState(null);
 
