@@ -156,13 +156,17 @@ export const getProjectMessages = async (projectId, user, queryParams = {}) => {
       ];
     }
   } else {
-    // Developer only sees their own 1-on-1 messages with manager (and general broadcasts)
-    const managerId = project.createdBy?._id || project.createdBy;
+    // Developer 1-on-1 chat with Manager or fellow developer in that project
+    const defaultRecipient = project.createdBy?._id || project.createdBy;
+    const targetRecipientId = (targetDeveloperId && mongoose.Types.ObjectId.isValid(targetDeveloperId))
+      ? new mongoose.Types.ObjectId(targetDeveloperId)
+      : defaultRecipient;
+
     query.$or = [
-      { sender: user._id, recipient: managerId },
-      { sender: managerId, recipient: user._id },
+      { sender: user._id, recipient: targetRecipientId },
+      { sender: targetRecipientId, recipient: user._id },
       { sender: user._id, recipient: null },
-      { sender: managerId, recipient: null }
+      { sender: targetRecipientId, recipient: null }
     ];
   }
 
