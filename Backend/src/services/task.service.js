@@ -1,14 +1,6 @@
 import mongoose from 'mongoose';
 import Task from '../models/Task.js';
 import Project from '../models/Project.js';
-import User from '../models/User.js';
-import Contribution from '../models/Contribution.js';
-import CodeReview from '../models/CodeReview.js';
-import Notification from '../models/Notification.js';
-import CodeFile from '../models/CodeFile.js';
-import Message from '../models/Message.js';
-import CodeComment from '../models/CodeComment.js';
-import FileAttachment from '../models/FileAttachment.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { notifyTaskAssigned, notifyTaskStatusChanged } from './notification.service.js';

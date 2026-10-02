@@ -6,9 +6,9 @@ import { PageSkeleton } from '../../components/workspace/SkeletonLoaders';
 import {
   TaskCheckIcon,
   SearchIcon,
-  PlusIcon,
   TrashIcon,
 } from '../../components/common/Icons';
+
 import { tasksApi } from '../../api/tasks.api';
 
 const STATUS_COLORS = {
@@ -69,8 +69,8 @@ export default function Tasks({ tasks = [], stats, loading, userRole }) {
 
   // Task Details Panel
   if (selectedTask) {
-    const taskId = selectedTask._id || selectedTask.id;
     return (
+
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <button

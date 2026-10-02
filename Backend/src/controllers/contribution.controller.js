@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as contributionService from '../services/contribution.service.js';
-import { sendSuccess, AppError } from '../utils/response.js';
+import { sendSuccess } from '../utils/response.js';
+
 
 /**
  * @desc    Submit a new code contribution

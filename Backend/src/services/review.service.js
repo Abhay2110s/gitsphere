@@ -1,10 +1,7 @@
 import mongoose from 'mongoose';
 import CodeReview from '../models/CodeReview.js';
 import Task from '../models/Task.js';
-import Contribution from '../models/Contribution.js';
-import Notification from '../models/Notification.js';
 import { AppError } from '../utils/response.js';
-import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { notifyCodeSubmitted, notifyCodeReviewed } from './notification.service.js';
 import { logActivity } from './activity.service.js';
 

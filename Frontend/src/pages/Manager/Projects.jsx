@@ -3,7 +3,8 @@ import StatCard from '../../components/manager/StatCard';
 import EmptyState from '../../components/manager/EmptyState';
 import CreateProjectModal from '../../components/manager/CreateProjectModal';
 import { useProjects } from '../../hooks/useProjects';
-import { FolderIcon, PlusIcon, CheckIcon } from '../../components/common/Icons';
+import { FolderIcon, PlusIcon } from '../../components/common/Icons';
+
 
 export default function Projects({ onSelectProject }) {
   const [isModalOpen, setIsModalOpen] = useState(false);

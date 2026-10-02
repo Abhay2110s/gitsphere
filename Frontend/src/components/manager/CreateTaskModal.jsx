@@ -32,7 +32,7 @@ export default function CreateTaskModal({
   const defaultProjectId = projectList.length > 0 ? String(projectList[0]._id || projectList[0].id) : '';
   const selectedProjectId = formData.project || defaultProjectId;
 
-  // Derive developer options strictly from the selected project's enrolled members
+  // Derive developer options strictly from the selected project's enrolled members (fallback to availableDevelopers)
   const developerOptions = useMemo(() => {
     const map = new Map();
 
@@ -40,8 +40,14 @@ export default function CreateTaskModal({
       const selectedProj = projectList.find(
         (p) => String(p._id || p.id) === String(selectedProjectId)
       );
-      if (selectedProj?.members && Array.isArray(selectedProj.members)) {
+      if (selectedProj?.members && Array.isArray(selectedProj.members) && selectedProj.members.length > 0) {
         selectedProj.members.forEach((m) => {
+          const id = String(m._id || m.id || m);
+          const name = m.name || m.fullName || m.email || id;
+          map.set(id, { id, name });
+        });
+      } else if (Array.isArray(availableDevelopers) && availableDevelopers.length > 0) {
+        availableDevelopers.forEach((m) => {
           const id = String(m._id || m.id || m);
           const name = m.name || m.fullName || m.email || id;
           map.set(id, { id, name });
@@ -50,7 +56,7 @@ export default function CreateTaskModal({
     }
 
     return Array.from(map.values());
-  }, [selectedProjectId, projectList]);
+  }, [selectedProjectId, projectList, availableDevelopers]);
 
   if (!isOpen) return null;
 

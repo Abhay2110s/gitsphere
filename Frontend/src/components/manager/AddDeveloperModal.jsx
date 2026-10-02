@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { CloseIcon, UsersIcon, UserIcon } from '../common/Icons';
+import { CloseIcon, UsersIcon } from '../common/Icons';
+
 
 export default function AddDeveloperModal({
   isOpen,

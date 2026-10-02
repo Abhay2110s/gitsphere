@@ -101,8 +101,7 @@ export default function Contributions() {
     setActionLoading(true);
     setActionMessage({ type: '', text: '' });
     try {
-      const res = await contributionsApi.approveContribution(contId);
-      const updated = res?.data || res;
+      await contributionsApi.approveContribution(contId);
       setActionMessage({ type: 'success', text: `Contribution v${selectedContribution.version} approved and merged successfully!` });
       setSelectedContribution(prev => ({
         ...prev,
@@ -129,8 +128,7 @@ export default function Contributions() {
     setActionLoading(true);
     setActionMessage({ type: '', text: '' });
     try {
-      const res = await contributionsApi.requestChanges(contId, reviewComment);
-      const updated = res?.data || res;
+      await contributionsApi.requestChanges(contId, reviewComment);
       setActionMessage({ type: 'success', text: 'Changes requested successfully. Developer has been notified.' });
       setSelectedContribution(prev => ({
         ...prev,

@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import Message from '../models/Message.js';
 import Project from '../models/Project.js';
-import Task from '../models/Task.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 

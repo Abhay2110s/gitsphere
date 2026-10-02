@@ -12,9 +12,8 @@ import {
   ActivityIcon,
   ShieldCheckIcon,
   PlusIcon,
-  ChevronRightIcon,
-  CheckIcon,
 } from '../../components/common/Icons';
+
 
 export default function Dashboard({
   user,

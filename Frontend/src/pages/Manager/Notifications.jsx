@@ -12,7 +12,8 @@ import {
   TrashIcon,
 } from '../../components/common/Icons';
 
-export default function Notifications({ onNavigateToSection }) {
+export default function Notifications({ onNavigateToSection: _onNavigateToSection }) {
+
   const {
     notifications,
     unreadCount,

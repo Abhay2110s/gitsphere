@@ -20,10 +20,7 @@ import {
   GitCommitIcon,
   PlusIcon,
   TrashIcon,
-  CodeIcon,
-  ClockIcon,
   ChevronRightIcon,
-  AlertTriangleIcon,
 } from '../../components/common/Icons';
 
 export default function ProjectDetails({ project, onBackToProjects }) {
@@ -65,6 +62,24 @@ export default function ProjectDetails({ project, onBackToProjects }) {
   const [loadingActivities, setLoadingActivities] = useState(false);
 
   const projectId = project?.id || project?._id;
+
+  // Memoized available developers and pending reviews before any returns
+  const availableDevelopers = useMemo(() => {
+    if (!members || !Array.isArray(members)) return [];
+    return members.map((m) => {
+      const id = String(m._id || m.id || m);
+      return {
+        id,
+        _id: id,
+        name: m.name || m.fullName || m.email || id,
+        email: m.email,
+      };
+    });
+  }, [members]);
+
+  const pendingReviewsList = useMemo(() => {
+    return contributions.filter((c) => c.status === 'IN_REVIEW');
+  }, [contributions]);
 
   useEffect(() => {
     if (project?.status) setCurrentStatus(project.status);
@@ -360,23 +375,6 @@ export default function ProjectDetails({ project, onBackToProjects }) {
 
   const tabs = ['Overview', 'Tasks', 'Contributions', 'Reviews', 'Team', 'Activity', 'Versions'];
   const normalizedStatus = (currentStatus || 'PLANNING').toUpperCase();
-
-  const availableDevelopers = useMemo(() => {
-    if (!members || !Array.isArray(members)) return [];
-    return members.map((m) => {
-      const id = String(m._id || m.id || m);
-      return {
-        id,
-        _id: id,
-        name: m.name || m.fullName || m.email || id,
-        email: m.email,
-      };
-    });
-  }, [members]);
-
-  const pendingReviewsList = useMemo(() => {
-    return contributions.filter((c) => c.status === 'IN_REVIEW');
-  }, [contributions]);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -1102,7 +1100,7 @@ export default function ProjectDetails({ project, onBackToProjects }) {
               </div>
               <button
                 onClick={() => setSelectedContributionForReview(null)}
-                className="p-1 rounded-lg text-[#888888] hover:text-white"
+                className="p-1 rounded-lg text-[#888888] hover:text-white cursor-pointer"
               >
                 ✕
               </button>
