@@ -75,7 +75,8 @@ export default function DashboardPreview() {
     : projects.filter(p => p.status.toLowerCase() === activeFilter.toLowerCase());
 
   return (
-    <section id="explore" className="relative bg-[#000000] py-24 sm:py-32 px-4 sm:px-6 lg:px-12 border-b border-[#222222] overflow-hidden">
+    <section id="workspace" data-section="workspace" className="relative bg-[#000000] py-24 sm:py-32 px-4 sm:px-6 lg:px-12 border-b border-[#222222] overflow-hidden">
+      <div id="explore" className="absolute -top-24 left-0 pointer-events-none" />
 
       {/* Background geometric accents */}
       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[900px] h-[350px] bg-[#111111] rounded-full blur-3xl opacity-50 pointer-events-none" />

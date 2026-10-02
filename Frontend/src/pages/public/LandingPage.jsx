@@ -40,7 +40,7 @@ export default function LandingPage({ onNavigateToRegister, onNavigateToAuth }) 
   };
 
   const scrollToSectionWithOffset = (id) => {
-    const el = document.getElementById(id);
+    const el = document.getElementById(id) || (id === 'workspace' ? document.getElementById('explore') : null) || (id === 'workflow' ? document.getElementById('how-it-works') : null);
     if (el) {
       const yOffset = -76;
       const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
@@ -49,11 +49,11 @@ export default function LandingPage({ onNavigateToRegister, onNavigateToAuth }) 
   };
 
   const handleExplore = () => {
-    scrollToSectionWithOffset('explore');
+    scrollToSectionWithOffset('workspace');
   };
 
   const handleLearnMore = () => {
-    scrollToSectionWithOffset('how-it-works');
+    scrollToSectionWithOffset('workflow');
   };
 
   return (
@@ -63,32 +63,30 @@ export default function LandingPage({ onNavigateToRegister, onNavigateToAuth }) 
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col">
-        {/* 2. HERO SECTION (Landing) - No Hexagonal Design */}
+        {/* 2. HERO SECTION (Landing) */}
         <Hero
           onOpenAuth={handleOpenAuth}
           onExplore={handleExplore}
         />
 
-        {/* 3. PRODUCT / DASHBOARD PREVIEW (Landing) */}
-        <div className="content-visibility-auto">
+        {/* 3. PRODUCT / DASHBOARD PREVIEW (Workspace) */}
+        <div>
           <DashboardPreview />
         </div>
 
-        {/* 4. FEATURES INTRODUCTION (Landing) */}
-        <div className="content-visibility-auto">
+        {/* 4. FEATURES INTRODUCTION & HORIZONTAL SCROLL CARDS (Features) */}
+        <section id="features" data-section="features" className="relative">
           <FeaturesIntro />
-        </div>
+          <HorizontalFeatures />
+        </section>
 
-        {/* 5. FULL-SCREEN SCROLL-DRIVEN HORIZONTAL FEATURES (Cards 01 to 05) */}
-        <HorizontalFeatures />
-
-        {/* 6. HOW GITSPHERE WORKS (Landing) - Follows directly after Feature 05 */}
-        <div className="content-visibility-auto">
+        {/* 5. HOW GITSPHERE WORKS (Workflow) */}
+        <div>
           <HowItWorks />
         </div>
 
-        {/* 8. FINAL CTA (Landing) */}
-        <div className="content-visibility-auto">
+        {/* 6. FINAL CTA (Landing) */}
+        <div>
           <FinalCta
             onOpenAuth={handleOpenAuth}
             onLearnMore={handleLearnMore}
@@ -96,8 +94,8 @@ export default function LandingPage({ onNavigateToRegister, onNavigateToAuth }) 
         </div>
       </main>
 
-      {/* 9. FOOTER (Common) */}
-      <div className="content-visibility-auto">
+      {/* 7. FOOTER (Common) */}
+      <div>
         <Footer />
       </div>
 

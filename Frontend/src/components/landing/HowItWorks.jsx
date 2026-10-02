@@ -52,7 +52,8 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section id="how-it-works" className="bg-white py-20 sm:py-28 px-4 sm:px-6 lg:px-12 border-b border-[#EEEEEE]">
+    <section id="workflow" data-section="workflow" className="relative bg-white py-20 sm:py-28 px-4 sm:px-6 lg:px-12 border-b border-[#EEEEEE]">
+      <div id="how-it-works" className="absolute -top-24 left-0 pointer-events-none" />
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}

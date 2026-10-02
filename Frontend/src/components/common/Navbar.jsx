@@ -8,34 +8,74 @@ export default function Navbar({ onOpenAuth }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { id: 'explore', label: 'Overview', href: '#explore' },
+    { id: 'workspace', label: 'Workspace', href: '#workspace' },
     { id: 'features', label: 'Features', href: '#features' },
-    { id: 'how-it-works', label: 'Workflow', href: '#how-it-works' },
+    { id: 'workflow', label: 'Workflow', href: '#workflow' },
   ];
 
-  // Scroll-spy to automatically track which section is currently in view
+  // Robust bi-directional scroll-spy to track current component during scroll up and down
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['explore', 'features', 'how-it-works'];
-      const scrollPos = window.scrollY + 180;
-
-      if (window.scrollY < 200) {
+      // If at top hero section, clear active item so no dot is displayed
+      if (window.scrollY < 180) {
         setActiveSection('');
         return;
       }
 
-      for (let i = sections.length - 1; i >= 0; i--) {
-        const el = document.getElementById(sections[i]);
-        if (el && scrollPos >= el.offsetTop) {
-          setActiveSection(sections[i]);
+      // Checkpoint below the floating navbar (~54px navbar + buffer)
+      const checkpoint = 220;
+
+      const workspaceEl = document.getElementById('workspace') || document.getElementById('explore');
+      const featuresEl = document.getElementById('features');
+      const workflowEl = document.getElementById('workflow') || document.getElementById('how-it-works');
+
+      // 1. If at bottom of page, activate workflow
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 120) {
+        setActiveSection('workflow');
+        return;
+      }
+
+      // 2. Check Workflow
+      if (workflowEl) {
+        const rect = workflowEl.getBoundingClientRect();
+        if (rect.top <= checkpoint && rect.bottom > 100) {
+          setActiveSection('workflow');
+          return;
+        }
+      }
+
+      // 3. Check Features
+      if (featuresEl) {
+        const rect = featuresEl.getBoundingClientRect();
+        const cardsEl = document.getElementById('features-cards');
+        const cardsRect = cardsEl ? cardsEl.getBoundingClientRect() : null;
+        const topBound = rect.top;
+        const bottomBound = cardsRect ? cardsRect.bottom : rect.bottom;
+
+        if (topBound <= checkpoint && bottomBound > checkpoint) {
+          setActiveSection('features');
+          return;
+        }
+      }
+
+      // 4. Check Workspace
+      if (workspaceEl) {
+        const rect = workspaceEl.getBoundingClientRect();
+        if (rect.top <= checkpoint && rect.bottom > checkpoint) {
+          setActiveSection('workspace');
           return;
         }
       }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
     handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
   }, []);
 
   // Smooth scroll with clearance offset for the floating pill navbar
@@ -43,7 +83,10 @@ export default function Navbar({ onOpenAuth }) {
     if (href.startsWith('#')) {
       e.preventDefault();
       const id = href.replace('#', '');
-      const el = document.getElementById(id);
+      const el =
+        document.getElementById(id) ||
+        (id === 'workspace' ? document.getElementById('explore') : null) ||
+        (id === 'workflow' ? document.getElementById('how-it-works') : null);
       if (el) {
         const yOffset = -76;
         const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
