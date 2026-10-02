@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatCard from '../../components/manager/StatCard';
 import EmptyState from '../../components/manager/EmptyState';
+import CreateTaskModal from '../../components/manager/CreateTaskModal';
+import TaskDetailModal from '../../components/manager/TaskDetailModal';
+import DeleteConfirmModal from '../../components/common/DeleteConfirmModal';
 import { projectsApi } from '../../api/projects.api';
+import { tasksApi } from '../../api/tasks.api';
 import {
   FolderIcon,
   UsersIcon,
@@ -10,6 +14,8 @@ import {
   GitPullRequestIcon,
   ActivityIcon,
   GitCommitIcon,
+  PlusIcon,
+  TrashIcon,
 } from '../../components/common/Icons';
 
 export default function ProjectDetails({ project, onBackToProjects }) {
@@ -17,11 +23,58 @@ export default function ProjectDetails({ project, onBackToProjects }) {
   const [currentStatus, setCurrentStatus] = useState(project?.status || 'PLANNING');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Project Tasks state
+  const [projectTasks, setProjectTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+
+  const projectId = project?.id || project?._id;
+
   useEffect(() => {
     if (project?.status) {
       setCurrentStatus(project.status);
     }
   }, [project?.status]);
+
+  // Fetch tasks for this project
+  const fetchProjectTasks = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      setLoadingTasks(true);
+      const res = await projectsApi.getProjectTasks(projectId);
+      const list = Array.isArray(res) ? res : res?.tasks || res?.data?.tasks || res?.data || [];
+      setProjectTasks(list);
+    } catch (err) {
+      console.error('Failed to load project tasks:', err);
+      setProjectTasks([]);
+    } finally {
+      setLoadingTasks(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId && activeTab === 'Tasks') {
+      fetchProjectTasks();
+    }
+  }, [projectId, activeTab, fetchProjectTasks]);
+
+  // Listen to global task events
+  useEffect(() => {
+    const handleSync = () => {
+      fetchProjectTasks();
+    };
+    window.addEventListener('gitsphere:task-created', handleSync);
+    window.addEventListener('gitsphere:task-updated', handleSync);
+    window.addEventListener('gitsphere:task-deleted', handleSync);
+    return () => {
+      window.removeEventListener('gitsphere:task-created', handleSync);
+      window.removeEventListener('gitsphere:task-updated', handleSync);
+      window.removeEventListener('gitsphere:task-deleted', handleSync);
+    };
+  }, [fetchProjectTasks]);
 
   // If no project is currently selected
   if (!project) {
@@ -38,8 +91,6 @@ export default function ProjectDetails({ project, onBackToProjects }) {
     );
   }
 
-  const projectId = project.id || project._id;
-
   const handleStatusChange = async (newStatus) => {
     try {
       setIsUpdating(true);
@@ -55,6 +106,59 @@ export default function ProjectDetails({ project, onBackToProjects }) {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleCreateTask = async (taskData) => {
+    const payload = { ...taskData };
+    delete payload.projectId;
+    const res = await tasksApi.createTask(projectId, payload);
+    const newTask = res?.data || res?.task || res;
+    setProjectTasks((prev) => [newTask, ...prev]);
+    window.dispatchEvent(new CustomEvent('gitsphere:task-created', { detail: newTask }));
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!taskId) return;
+    try {
+      setIsDeletingTask(true);
+      await tasksApi.deleteTask(taskId);
+      setProjectTasks((prev) => prev.filter((t) => t._id !== taskId && t.id !== taskId));
+      window.dispatchEvent(new CustomEvent('gitsphere:task-deleted', { detail: { taskId } }));
+      if (selectedTask && (selectedTask._id === taskId || selectedTask.id === taskId)) {
+        setSelectedTask(null);
+      }
+      setTaskToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+    } finally {
+      setIsDeletingTask(false);
+    }
+  };
+
+  const handleUpdateTask = async (taskId, updateData) => {
+    const res = await tasksApi.updateTask(taskId, updateData);
+    const updated = res?.data || res?.task || res;
+    setProjectTasks((prev) =>
+      prev.map((t) => (t._id === taskId || t.id === taskId ? { ...t, ...updated } : t))
+    );
+    if (selectedTask && (selectedTask._id === taskId || selectedTask.id === taskId)) {
+      setSelectedTask((prev) => ({ ...prev, ...updated }));
+    }
+    window.dispatchEvent(new CustomEvent('gitsphere:task-updated', { detail: updated }));
+    return updated;
+  };
+
+  const handleAssignTask = async (taskId, assignedTo) => {
+    const res = await tasksApi.assignTask(taskId, assignedTo);
+    const updated = res?.data || res?.task || res;
+    setProjectTasks((prev) =>
+      prev.map((t) => (t._id === taskId || t.id === taskId ? { ...t, ...updated } : t))
+    );
+    if (selectedTask && (selectedTask._id === taskId || selectedTask.id === taskId)) {
+      setSelectedTask((prev) => ({ ...prev, ...updated }));
+    }
+    window.dispatchEvent(new CustomEvent('gitsphere:task-updated', { detail: updated }));
+    return updated;
   };
 
   const getStatusBadge = (status) => {
@@ -76,6 +180,20 @@ export default function ProjectDetails({ project, onBackToProjects }) {
 
   const tabs = ['Overview', 'Tasks', 'Contributions', 'Reviews', 'Team', 'Activity', 'Versions'];
   const normalizedStatus = (currentStatus || 'PLANNING').toUpperCase();
+
+  // Extract members as available developers
+  const availableDevelopers = useMemo(() => {
+    if (!project?.members || !Array.isArray(project.members)) return [];
+    return project.members.map((m) => {
+      const id = String(m._id || m.id || m);
+      return {
+        id,
+        _id: id,
+        name: m.name || m.fullName || m.email || id,
+        email: m.email,
+      };
+    });
+  }, [project?.members]);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -165,8 +283,8 @@ export default function ProjectDetails({ project, onBackToProjects }) {
       {/* Statistics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Members" value={project.members?.length || 0} subtext="Assigned developers" icon={UsersIcon} />
-        <StatCard label="Tasks" value={project.tasks?.length || 0} subtext="Tracked items" icon={TaskCheckIcon} />
-        <StatCard label="Completed" value={project.completedTasks?.length || 0} subtext="Finished tasks" icon={CheckIcon} />
+        <StatCard label="Tasks" value={projectTasks.length || project.tasks?.length || 0} subtext="Tracked items" icon={TaskCheckIcon} />
+        <StatCard label="Completed" value={projectTasks.filter(t => t.status === 'COMPLETED').length || project.completedTasks?.length || 0} subtext="Finished tasks" icon={CheckIcon} />
         <StatCard label="Pending Reviews" value={project.pendingReviews?.length || 0} subtext="Awaiting review" icon={GitPullRequestIcon} />
       </div>
 
@@ -188,7 +306,7 @@ export default function ProjectDetails({ project, onBackToProjects }) {
       </div>
 
       {/* Tab Panels with Zero-States */}
-      <div className="rounded-2xl border border-[#222222] bg-[#0A0A0A] p-6 sm:p-10">
+      <div className="rounded-2xl border border-[#222222] bg-[#0A0A0A] p-6 sm:p-8">
         {activeTab === 'Overview' && (
           <EmptyState
             icon={FolderIcon}
@@ -199,14 +317,92 @@ export default function ProjectDetails({ project, onBackToProjects }) {
         )}
 
         {activeTab === 'Tasks' && (
-          <EmptyState
-            icon={TaskCheckIcon}
-            title="NO TASKS IN PROJECT"
-            description="Create task items to start tracking sprint development."
-            actionLabel="+ Create Task"
-            onAction={() => {}}
-            className="border-0 bg-transparent py-8"
-          />
+          <div className="space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[#1C1C1C]">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Project Tasks ({projectTasks.length})
+                </h3>
+                <p className="text-xs text-[#777777] mt-0.5">
+                  Coding tasks and tickets assigned to developers in this project.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsCreateTaskOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-[#E5E5E5] transition-colors cursor-pointer"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                <span>Create Task</span>
+              </button>
+            </div>
+
+            {loadingTasks ? (
+              <div className="py-12 flex flex-col items-center justify-center text-center">
+                <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <span className="mt-3 text-xs font-mono text-[#666666]">Loading project tasks...</span>
+              </div>
+            ) : projectTasks.length === 0 ? (
+              <EmptyState
+                icon={TaskCheckIcon}
+                title="NO TASKS IN PROJECT"
+                description="Create task items to start tracking sprint development and assigning developers."
+                actionLabel="+ Create Task"
+                onAction={() => setIsCreateTaskOpen(true)}
+                className="border-0 bg-transparent py-8"
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {projectTasks.map((t) => {
+                  const tid = t._id || t.id;
+                  const assignee = t.assignedTo?.name || t.assignedTo?.email || 'Unassigned';
+                  return (
+                    <div
+                      key={tid}
+                      onClick={() => setSelectedTask(t)}
+                      className="group p-4 rounded-xl border border-[#222222] bg-[#121212] hover:border-[#444444] transition-all cursor-pointer space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-xs font-bold text-white leading-snug line-clamp-2">
+                          {t.title}
+                        </h4>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1F1F1F] text-[#AAAAAA] border border-[#333333]">
+                            {t.status?.replace('_', ' ')}
+                          </span>
+                          <button
+                            type="button"
+                            title="Delete Task"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTaskToDelete(t);
+                            }}
+                            className="p-1 rounded text-[#555555] hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-70 group-hover:opacity-100 cursor-pointer"
+                          >
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {t.description && (
+                        <p className="text-[11px] text-[#888888] line-clamp-2 leading-relaxed">
+                          {t.description}
+                        </p>
+                      )}
+
+                      <div className="pt-2 border-t border-[#1C1C1C] flex items-center justify-between text-[10px] font-mono text-[#666666]">
+                        <span className="truncate text-[#888888]">
+                          Priority: <strong className="text-[#CCCCCC]">{t.priority || 'MEDIUM'}</strong>
+                        </span>
+                        <span className="truncate text-[#AAAAAA]">
+                          {assignee}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'Contributions' && (
@@ -256,6 +452,38 @@ export default function ProjectDetails({ project, onBackToProjects }) {
           />
         )}
       </div>
+
+      {/* Task Details / Management Modal */}
+      <TaskDetailModal
+        isOpen={Boolean(selectedTask)}
+        task={selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onDeleteTask={handleDeleteTask}
+        onUpdateTask={handleUpdateTask}
+        onAssignTask={handleAssignTask}
+        availableDevelopers={availableDevelopers}
+      />
+
+      {/* Quick Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(taskToDelete)}
+        title="Delete Project Task"
+        message="Are you sure you want to permanently delete this task from the project? This action cannot be undone."
+        itemName={taskToDelete?.title}
+        confirmLabel="Delete Task"
+        loading={isDeletingTask}
+        onConfirm={() => handleDeleteTask(taskToDelete?._id || taskToDelete?.id)}
+        onCancel={() => setTaskToDelete(null)}
+      />
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={isCreateTaskOpen}
+        onClose={() => setIsCreateTaskOpen(false)}
+        onCreateTask={handleCreateTask}
+        availableProjects={[project]}
+        availableDevelopers={availableDevelopers}
+      />
     </div>
   );
 }

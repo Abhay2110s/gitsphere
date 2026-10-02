@@ -28,6 +28,32 @@ export function useTasks() {
     return updated;
   };
 
+  const updateTask = useCallback(async (taskId, updateData) => {
+    const res = await tasksApi.updateTask(taskId, updateData);
+    const updated = res?.data || res?.task || res;
+    setTasks((prev) =>
+      prev.map((t) => (t._id === taskId || t.id === taskId ? { ...t, ...updated } : t))
+    );
+    window.dispatchEvent(new CustomEvent('gitsphere:task-updated', { detail: updated }));
+    return updated;
+  }, []);
+
+  const assignTask = useCallback(async (taskId, assignedTo) => {
+    const res = await tasksApi.assignTask(taskId, assignedTo);
+    const updated = res?.data || res?.task || res;
+    setTasks((prev) =>
+      prev.map((t) => (t._id === taskId || t.id === taskId ? { ...t, ...updated } : t))
+    );
+    window.dispatchEvent(new CustomEvent('gitsphere:task-updated', { detail: updated }));
+    return updated;
+  }, []);
+
+  const deleteTask = useCallback(async (taskId) => {
+    await tasksApi.deleteTask(taskId);
+    setTasks((prev) => prev.filter((t) => t._id !== taskId && t.id !== taskId));
+    window.dispatchEvent(new CustomEvent('gitsphere:task-deleted', { detail: { taskId } }));
+  }, []);
+
   const createTask = useCallback(async (projectId, taskData) => {
     const res = await tasksApi.createTask(projectId, taskData);
     const newTask = res?.data || res?.task || res;
@@ -58,10 +84,23 @@ export function useTasks() {
       fetchTasks();
     };
 
+    const handleDeleteSync = (e) => {
+      const deletedId = e?.detail?.taskId;
+      if (deletedId) {
+        setTasks((prev) => prev.filter((t) => t._id !== deletedId && t.id !== deletedId));
+      } else {
+        fetchTasks();
+      }
+    };
+
     window.addEventListener('gitsphere:task-created', handleSync);
+    window.addEventListener('gitsphere:task-updated', handleSync);
+    window.addEventListener('gitsphere:task-deleted', handleDeleteSync);
     return () => {
       ignore = true;
       window.removeEventListener('gitsphere:task-created', handleSync);
+      window.removeEventListener('gitsphere:task-updated', handleSync);
+      window.removeEventListener('gitsphere:task-deleted', handleDeleteSync);
     };
   }, [fetchTasks]);
 
@@ -71,6 +110,9 @@ export function useTasks() {
     error,
     refetch: fetchTasks,
     createTask,
+    updateTask,
+    assignTask,
+    deleteTask,
     updateTaskStatus,
   };
 }

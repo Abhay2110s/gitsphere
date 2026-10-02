@@ -5,6 +5,10 @@ import User from '../models/User.js';
 import Contribution from '../models/Contribution.js';
 import CodeReview from '../models/CodeReview.js';
 import Notification from '../models/Notification.js';
+import CodeFile from '../models/CodeFile.js';
+import Message from '../models/Message.js';
+import CodeComment from '../models/CodeComment.js';
+import FileAttachment from '../models/FileAttachment.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { notifyTaskAssigned, notifyTaskStatusChanged } from './notification.service.js';
@@ -472,15 +476,52 @@ export const updateTaskStatus = async (taskId, user, newStatus) => {
  * Delete a task (Manager only)
  */
 export const deleteTask = async (taskId, managerId) => {
+  if (!mongoose.Types.ObjectId.isValid(taskId)) {
+    throw new AppError('Invalid Task ID format', 400, 'INVALID_ID');
+  }
+
   const task = await Task.findById(taskId).populate('project');
   if (!task) {
     throw new AppError('Task not found', 404, 'NOT_FOUND');
   }
 
-  if (!task.project.createdBy.equals(managerId)) {
+  const projectOwnerId = task.project?.createdBy?._id || task.project?.createdBy;
+  const isProjectOwner =
+    projectOwnerId &&
+    (projectOwnerId.equals
+      ? projectOwnerId.equals(managerId)
+      : String(projectOwnerId) === String(managerId));
+
+  const isTaskCreator =
+    task.createdBy &&
+    (task.createdBy.equals
+      ? task.createdBy.equals(managerId)
+      : String(task.createdBy) === String(managerId));
+
+  if (!isProjectOwner && !isTaskCreator) {
     throw new AppError('You can only delete tasks in projects you created.', 403, 'FORBIDDEN');
   }
 
   await Task.findByIdAndDelete(taskId);
+
+  // Clean up associated resources
+  await Promise.allSettled([
+    CodeFile.deleteMany({ task: taskId }),
+    CodeReview.deleteMany({ task: taskId }),
+    Message.deleteMany({ task: taskId }),
+    Notification.deleteMany({ task: taskId }),
+    Contribution.deleteMany({ task: taskId }),
+    CodeComment.deleteMany({ task: taskId }),
+    FileAttachment.deleteMany({ task: taskId })
+  ]);
+
+  logActivity({
+    user: managerId,
+    project: task.project?._id || task.project,
+    task: task._id,
+    action: 'TASK_DELETED',
+    metadata: { title: task.title }
+  });
+
   return { message: 'Task deleted successfully' };
 };

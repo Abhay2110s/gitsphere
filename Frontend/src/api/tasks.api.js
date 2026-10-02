@@ -25,6 +25,24 @@ export const tasksApi = {
     return res.data;
   },
 
+  // Update task details (Manager only)
+  updateTask: async (taskId, updateData) => {
+    const res = await api.patch(`/tasks/${taskId}`, updateData);
+    return res?.data ?? res;
+  },
+
+  // Assign or reassign task (Manager only)
+  assignTask: async (taskId, assignedTo) => {
+    const res = await api.patch(`/tasks/${taskId}/assign`, { assignedTo });
+    return res?.data ?? res;
+  },
+
+  // Delete task (Manager only)
+  deleteTask: async (taskId) => {
+    const res = await api.delete(`/tasks/${taskId}`);
+    return res?.data ?? res;
+  },
+
   // Update task status (TODO, IN_PROGRESS, COMPLETED, BLOCKED)
   updateTaskStatus: async (taskId, status) => {
     const res = await api.patch(`/tasks/${taskId}/status`, { status });
