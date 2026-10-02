@@ -1,4 +1,15 @@
 import User from '../models/User.js';
+import Project from '../models/Project.js';
+import Task from '../models/Task.js';
+import CodeFile from '../models/CodeFile.js';
+import CodeVersion from '../models/CodeVersion.js';
+import Contribution from '../models/Contribution.js';
+import CodeReview from '../models/CodeReview.js';
+import Message from '../models/Message.js';
+import CodeComment from '../models/CodeComment.js';
+import FileAttachment from '../models/FileAttachment.js';
+import ActivityLog from '../models/ActivityLog.js';
+import Notification from '../models/Notification.js';
 import { AppError } from '../utils/response.js';
 import { sendOtpEmail } from './email.service.js';
 import { dispatchBackgroundTask } from '../utils/backgroundTask.js';
@@ -236,5 +247,70 @@ export const resetPassword = async ({ email, password, otp }) => {
   await user.save();
 
   return { message: 'Password reset successfully' };
+};
+
+/**
+ * Permanently delete user account and completely vanish all associated records from database
+ * Handles both Manager (projects, tasks, code, comments, reviews, messages) and Developer
+ */
+export const deleteAccount = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError('User not found.', 404, 'NOT_FOUND');
+  }
+
+  const role = user.role;
+
+  // If MANAGER: cascade delete all manager-created projects and their dependent resources
+  if (role === 'MANAGER') {
+    const managerProjects = await Project.find({ createdBy: userId }).select('_id');
+    const projectIds = managerProjects.map((p) => p._id);
+
+    if (projectIds.length > 0) {
+      const projectTasks = await Task.find({ project: { $in: projectIds } }).select('_id');
+      const taskIds = projectTasks.map((t) => t._id);
+
+      await Promise.allSettled([
+        CodeFile.deleteMany({ $or: [{ project: { $in: projectIds } }, { task: { $in: taskIds } }] }),
+        CodeVersion.deleteMany({ project: { $in: projectIds } }),
+        Contribution.deleteMany({ $or: [{ project: { $in: projectIds } }, { task: { $in: taskIds } }] }),
+        CodeReview.deleteMany({ task: { $in: taskIds } }),
+        Message.deleteMany({ project: { $in: projectIds } }),
+        CodeComment.deleteMany({ $or: [{ project: { $in: projectIds } }, { task: { $in: taskIds } }] }),
+        FileAttachment.deleteMany({ $or: [{ project: { $in: projectIds } }, { task: { $in: taskIds } }] }),
+        ActivityLog.deleteMany({ project: { $in: projectIds } }),
+        Notification.deleteMany({ $or: [{ project: { $in: projectIds } }, { task: { $in: taskIds } }] }),
+        Task.deleteMany({ project: { $in: projectIds } }),
+        Project.deleteMany({ _id: { $in: projectIds } })
+      ]);
+    }
+  }
+
+  // Universal cleanup for both MANAGER and DEVELOPER across remaining collections
+  await Promise.allSettled([
+    // Remove user membership from any projects
+    Project.updateMany({ members: userId }, { $pull: { members: userId } }),
+    // Delete tasks assigned to or created by user
+    Task.deleteMany({ $or: [{ assignedTo: userId }, { createdBy: userId }] }),
+    // Delete contributions submitted by user
+    Contribution.deleteMany({ submittedBy: userId }),
+    // Delete reviews submitted or reviewed by user
+    CodeReview.deleteMany({ $or: [{ submittedBy: userId }, { reviewedBy: userId }] }),
+    // Delete all direct or project messages sent or received by user
+    Message.deleteMany({ $or: [{ sender: userId }, { recipient: userId }] }),
+    // Delete comments written by user
+    CodeComment.deleteMany({ author: userId }),
+    // Delete attachments uploaded by user
+    FileAttachment.deleteMany({ uploadedBy: userId }),
+    // Delete activity logs for user
+    ActivityLog.deleteMany({ user: userId }),
+    // Delete notifications received or related to user
+    Notification.deleteMany({ $or: [{ user: userId }, { relatedUser: userId }] })
+  ]);
+
+  // Permanently delete user document from database
+  await User.findByIdAndDelete(userId);
+
+  return { message: 'Account and all associated records permanently deleted from the database' };
 };
 

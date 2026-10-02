@@ -13,6 +13,10 @@ router.get('/', authenticate, requireManager, userController.getUsers);
 // Authenticated user: Update own profile
 router.patch('/profile', authenticate, validate(updateProfileSchema), userController.updateProfile);
 
+// Authenticated user: Permanently delete account and all records (Manager or Developer)
+router.delete('/account', authenticate, userController.deleteAccount);
+router.delete('/profile', authenticate, userController.deleteAccount);
+
 // Authenticated user: Get profile by ID
 router.get('/:id', authenticate, userController.getUserById);
 

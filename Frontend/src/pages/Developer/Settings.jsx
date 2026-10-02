@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { usersApi } from '../../api/users.api';
 import PageHeader from '../../components/developer/PageHeader';
-import { CheckIcon } from '../../components/common/Icons';
+import { CheckIcon, TrashIcon, AlertTriangleIcon } from '../../components/common/Icons';
+import DeleteConfirmModal from '../../components/common/DeleteConfirmModal';
 
 export default function Settings({ onLogout }) {
-  const { user, refetch, logout } = useAuth();
+  const { user, refetch, logout, deleteAccount } = useAuth();
 
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'account' | 'security'
   const [name, setName] = useState(user?.name || '');
@@ -15,6 +16,10 @@ export default function Settings({ onLogout }) {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   if (user !== prevUser) {
     setPrevUser(user);
@@ -254,14 +259,81 @@ export default function Settings({ onLogout }) {
               </div>
               <button
                 onClick={handleLogoutClick}
-                className="px-4 py-2 rounded-xl border border-red-900/50 hover:bg-red-950/30 text-xs font-bold text-red-400 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-neutral-700 hover:bg-[#1A1A1A] text-xs font-bold text-white transition-colors cursor-pointer"
               >
                 Sign Out
               </button>
             </div>
           </div>
+
+          {/* Danger Zone: Permanent Account Deletion */}
+          <div className="mt-8 pt-6 border-t border-red-950/60 p-5 rounded-2xl bg-[#0F0808] border space-y-4">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertTriangleIcon className="w-4 h-4" />
+              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-red-400">
+                DANGER ZONE • ACCOUNT DELETION
+              </h4>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-red-200 text-xs font-mono">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h5 className="text-xs font-bold text-white">
+                  Permanently Delete Developer Account
+                </h5>
+                <p className="text-[11px] text-[#888888] mt-0.5 leading-relaxed">
+                  Completely vanish your developer account from the database. You will be removed from all projects,
+                  and all your contributions, code reviews, messages, and comments will be permanently erased.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError(null);
+                  setIsDeleteModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold font-mono transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 shadow-sm"
+              >
+                <TrashIcon className="w-3.5 h-3.5" />
+                <span>Delete Account</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Permanently Delete Developer Account"
+        message="Are you sure you want to permanently delete your developer account? All your contributions, code reviews, messages, comments, and activity records will be irreversibly erased from the database. This action cannot be undone."
+        itemName={user?.email ? `${user.name || 'Developer'} (${user.email})` : 'Developer Account'}
+        confirmLabel="Vanish Account Forever"
+        loading={deletingAccount}
+        onCancel={() => {
+          if (!deletingAccount) {
+            setIsDeleteModalOpen(false);
+          }
+        }}
+        onConfirm={async () => {
+          try {
+            setDeletingAccount(true);
+            setDeleteError(null);
+            await deleteAccount();
+          } catch (err) {
+            setDeleteError(err?.message || 'Failed to delete account. Please try again.');
+            setIsDeleteModalOpen(false);
+          } finally {
+            setDeletingAccount(false);
+          }
+        }}
+      />
     </div>
   );
 }

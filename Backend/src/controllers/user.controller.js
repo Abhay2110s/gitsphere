@@ -29,6 +29,13 @@ export const getUsers = asyncHandler(async (req, res) => {
     query.role = role;
   }
 
+  if (req.query.isActive !== undefined) {
+    query.isActive = req.query.isActive === 'true';
+  } else {
+    // Default to active users
+    query.isActive = { $ne: false };
+  }
+
   const [users, total] = await Promise.all([
     User.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
     User.countDocuments(query)
@@ -69,5 +76,23 @@ export const updateProfile = asyncHandler(async (req, res) => {
   return sendSuccess(res, {
     message: 'Profile updated successfully',
     data: updatedUser
+  });
+});
+
+/**
+ * @desc    Permanently delete own account and vanish all associated records from database
+ * @route   DELETE /api/v1/users/account
+ * @access  Private (Manager & Developer)
+ */
+export const deleteAccount = asyncHandler(async (req, res) => {
+  const result = await authService.deleteAccount(req.user._id);
+
+  // Clear HTTP-only auth cookies if set
+  res.clearCookie('token');
+  res.clearCookie('jwt');
+
+  return sendSuccess(res, {
+    message: result.message || 'Account permanently deleted successfully',
+    data: null
   });
 });

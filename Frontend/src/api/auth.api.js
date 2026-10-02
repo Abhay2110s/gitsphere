@@ -75,5 +75,16 @@ export const authApi = {
       localStorage.removeItem('user');
     }
   },
+
+  deleteAccount: async () => {
+    try {
+      await api.delete('/users/account');
+    } finally {
+      localStorage.removeItem('gitsphere_token');
+      localStorage.removeItem('gitsphere_user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+  },
 };
 

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import DeleteConfirmModal from '../../components/common/DeleteConfirmModal';
+import { TrashIcon, AlertTriangleIcon } from '../../components/common/Icons';
 
 export default function Settings({ user: propUser }) {
-  const { user: authUser } = useAuth();
+  const { user: authUser, deleteAccount } = useAuth();
   const user = propUser || authUser;
 
   const [fullName, setFullName] = useState(user?.name || '');
@@ -10,6 +12,10 @@ export default function Settings({ user: propUser }) {
   const [bio, setBio] = useState(user?.bio || '');
   const [workspaceName, setWorkspaceName] = useState('Primary Workspace');
   const [prevUser, setPrevUser] = useState(user);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   if (user !== prevUser) {
     setPrevUser(user);
@@ -149,6 +155,73 @@ export default function Settings({ user: propUser }) {
           </button>
         </div>
       </form>
+
+      {/* Danger Zone: Permanent Account Deletion */}
+      <div className="p-6 sm:p-8 rounded-2xl border border-red-950/60 bg-[#0F0808] space-y-4">
+        <div className="flex items-center gap-2.5 text-red-400">
+          <AlertTriangleIcon className="w-4 h-4" />
+          <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-red-400">
+            DANGER ZONE • ACCOUNT DELETION
+          </h2>
+        </div>
+
+        {deleteError && (
+          <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-red-200 text-xs font-mono">
+            {deleteError}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+          <div className="max-w-xl">
+            <h3 className="text-sm font-bold text-white tracking-tight">
+              Permanently Delete Manager Account
+            </h3>
+            <p className="text-xs text-[#999999] mt-1 leading-relaxed">
+              Completely vanish your manager account and all associated records from the database.
+              All your created projects, tasks, code versions, contributions, messages, reviews, and activity logs will be irreversibly erased.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setIsDeleteModalOpen(true);
+            }}
+            className="px-5 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold font-mono transition-all cursor-pointer shrink-0 flex items-center justify-center gap-2 shadow-sm"
+          >
+            <TrashIcon className="w-3.5 h-3.5" />
+            <span>Delete Account</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Permanently Delete Manager Account"
+        message="Are you sure you want to permanently delete your account? All projects, tasks, code files, messages, and contributions created by or associated with this account will be completely wiped from the database. This action is permanent and cannot be reversed."
+        itemName={user?.email ? `${user.name || 'Manager'} (${user.email})` : 'Manager Account'}
+        confirmLabel="Vanish Account Forever"
+        loading={deletingAccount}
+        onCancel={() => {
+          if (!deletingAccount) {
+            setIsDeleteModalOpen(false);
+          }
+        }}
+        onConfirm={async () => {
+          try {
+            setDeletingAccount(true);
+            setDeleteError(null);
+            await deleteAccount();
+          } catch (err) {
+            setDeleteError(err?.message || 'Failed to delete account. Please try again.');
+            setIsDeleteModalOpen(false);
+          } finally {
+            setDeletingAccount(false);
+          }
+        }}
+      />
     </div>
   );
 }

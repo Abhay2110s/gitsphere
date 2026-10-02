@@ -75,11 +75,26 @@ export function useAuth() {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      await authApi.deleteAccount();
+    } catch (err) {
+      console.error('Delete account error:', err);
+      throw err;
+    } finally {
+      setUser(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+  };
+
   return {
     user,
     loading,
     error,
     refetch: fetchUser,
     logout,
+    deleteAccount,
   };
 }
