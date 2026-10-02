@@ -6,7 +6,7 @@ import PageHeader from '../../components/developer/PageHeader';
 import MessageList from '../../components/developer/MessageList';
 import MessageComposer from '../../components/developer/MessageComposer';
 import EmptyState from '../../components/developer/EmptyState';
-import { MessageIcon, FolderIcon, ClockIcon, UserIcon } from '../../components/common/Icons';
+import { MessageIcon, UserIcon } from '../../components/common/Icons';
 
 export default function Messages() {
   const { user } = useAuth();
@@ -56,12 +56,10 @@ export default function Messages() {
   // Find active contact details
   let activeContactName = 'Collaborator';
   let activeContactRole = 'USER';
-  let activeContactEmail = '';
 
   if (selectedRecipientId && managerId && selectedRecipientId === managerId) {
     activeContactName = typeof projectManager === 'object' ? projectManager.name || 'Project Manager' : 'Project Manager';
     activeContactRole = 'MANAGER';
-    activeContactEmail = typeof projectManager === 'object' ? projectManager.email : '';
   } else if (selectedRecipientId) {
     const foundDev = fellowDevelopers.find((d) => {
       const dId = String(typeof d === 'object' ? d._id || d.id : d);
@@ -70,7 +68,6 @@ export default function Messages() {
     if (foundDev) {
       activeContactName = typeof foundDev === 'object' ? foundDev.name || 'Developer' : 'Developer';
       activeContactRole = 'USER';
-      activeContactEmail = typeof foundDev === 'object' ? foundDev.email : '';
     }
   }
 

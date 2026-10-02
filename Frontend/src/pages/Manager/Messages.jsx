@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useProjects } from '../../hooks/useProjects';
 import { useMessages } from '../../hooks/useMessages';
 import EmptyState from '../../components/manager/EmptyState';
 import {
   MessageIcon,
-  FolderIcon,
-  ClockIcon,
   ArrowRightIcon,
   UserIcon
 } from '../../components/common/Icons';
@@ -17,7 +15,6 @@ export default function Messages() {
 
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedDeveloperId, setSelectedDeveloperId] = useState(''); // '' means project broadcast, or dev._id for 1-on-1
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Auto-select first project when projects load
   useEffect(() => {
@@ -83,10 +80,6 @@ export default function Messages() {
       handleSend(e);
     }
   };
-
-  const filteredProjects = projects.filter((p) =>
-    (p.name || '').toLowerCase().includes(searchQuery.toLowerCase().trim())
-  );
 
   return (
     <div className="space-y-6 animate-fade-in">
