@@ -16,11 +16,11 @@ export default function MessageList({ messages = [], currentUserId }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
       {messages.map((msg, index) => {
-        const isMine =
-          (msg.sender?._id && currentUserId && msg.sender._id === currentUserId) ||
-          (msg.sender === currentUserId);
+        const myId = String(currentUserId || '');
+        const senderId = String(msg.sender?._id || msg.sender?.id || msg.sender || '');
+        const isMine = Boolean(myId && senderId && myId === senderId);
         const role = msg.sender?.role || (isMine ? 'USER' : 'MANAGER');
-        const senderName = msg.sender?.name || (isMine ? 'You' : (role === 'MANAGER' ? 'Project Manager' : 'Developer'));
+        const senderName = isMine ? 'You' : (msg.sender?.name || (role === 'MANAGER' ? 'Project Manager' : 'Developer'));
         const timeFormatted = msg.createdAt
           ? new Date(msg.createdAt).toLocaleTimeString([], {
               hour: '2-digit',

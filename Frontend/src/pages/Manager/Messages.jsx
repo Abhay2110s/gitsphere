@@ -339,11 +339,12 @@ export default function Messages() {
                   </div>
                 ) : (
                   messages.map((msg, idx) => {
+                    const myId = String(user?._id || user?.id || '');
+                    const senderId = String(msg.sender?._id || msg.sender?.id || msg.sender || '');
                     const isMine =
-                      (msg.sender?._id && user?._id && msg.sender._id === user._id) ||
-                      msg.sender === user?._id ||
-                      (msg.sender?.role === 'MANAGER' && msg.sender?.email === user?.email);
-                    const senderName = msg.sender?.name || (isMine ? 'You (Manager)' : 'Developer');
+                      Boolean(myId && senderId && myId === senderId) ||
+                      Boolean(msg.sender?.email && user?.email && msg.sender.email.toLowerCase() === user.email.toLowerCase());
+                    const senderName = isMine ? 'You (Manager)' : (msg.sender?.name || 'Developer');
                     const roleLabel = msg.sender?.role || (isMine ? 'MANAGER' : 'USER');
                     const timeFormatted = msg.createdAt
                       ? new Date(msg.createdAt).toLocaleTimeString([], {

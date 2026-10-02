@@ -72,25 +72,48 @@ const verifyTaskAccess = async (taskId, projectId, user) => {
  * Send a message to a project or task chat
  * Rule 12: Only project members can participate in project chat
  */
-export const createMessage = async (user, { content, project: projectId, task: taskId }) => {
-  const project = await verifyProjectAccess(projectId, user);
+export const createMessage = async (user, data) => {
+  const content = (data?.content || '').trim();
+  let projectId = data?.project || data?.projectId;
+  const taskId = data?.task || data?.taskId;
 
-  // If task-scoped, verify task belongs to this project
+  if (!content) {
+    throw new AppError('Message content cannot be empty', 400, 'EMPTY_CONTENT');
+  }
+
+  // If task-scoped, find task and infer project if not provided
   if (taskId) {
-    await verifyTaskAccess(taskId, project._id, user);
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      throw new AppError('Invalid Task ID format', 400, 'INVALID_ID');
+    }
+    const task = await Task.findById(taskId).populate('project');
+    if (!task) {
+      throw new AppError('Task not found', 404, 'NOT_FOUND');
+    }
+    if (!projectId) {
+      projectId = task.project?._id || task.project;
+    }
+    await verifyProjectAccess(projectId, user);
+    await verifyTaskAccess(taskId, projectId, user);
+  } else if (projectId) {
+    await verifyProjectAccess(projectId, user);
+  } else {
+    throw new AppError('Project ID or Task ID is required', 400, 'MISSING_PARAMS');
   }
 
   const message = await Message.create({
     sender: user._id,
-    project: project._id,
+    project: projectId,
     task: taskId || null,
     content,
     readBy: [user._id] // Sender has already read their own message
   });
 
-  return message.populate([
+  const populated = await message.populate([
     { path: 'sender', select: 'name email avatar role' }
   ]);
+
+  return populated;
 };
 
 /**
