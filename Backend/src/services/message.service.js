@@ -69,13 +69,14 @@ const verifyTaskAccess = async (taskId, projectId, user) => {
 };
 
 /**
- * Send a message to a project or task chat
+ * Send a message to a project or task chat (supports 1-on-1 individual developer chat)
  * Rule 12: Only project members can participate in project chat
  */
 export const createMessage = async (user, data) => {
   const content = (data?.content || '').trim();
   let projectId = data?.project || data?.projectId;
   const taskId = data?.task || data?.taskId;
+  let recipientId = data?.recipient || data?.recipientId || null;
 
   if (!content) {
     throw new AppError('Message content cannot be empty', 400, 'EMPTY_CONTENT');
@@ -96,13 +97,19 @@ export const createMessage = async (user, data) => {
     await verifyProjectAccess(projectId, user);
     await verifyTaskAccess(taskId, projectId, user);
   } else if (projectId) {
-    await verifyProjectAccess(projectId, user);
+    const project = await verifyProjectAccess(projectId, user);
+
+    // If developer sending message, recipient defaults to project manager if not specified
+    if (user.role !== 'MANAGER' && !recipientId) {
+      recipientId = project.createdBy?._id || project.createdBy;
+    }
   } else {
     throw new AppError('Project ID or Task ID is required', 400, 'MISSING_PARAMS');
   }
 
   const message = await Message.create({
     sender: user._id,
+    recipient: recipientId || null,
     project: projectId,
     task: taskId || null,
     content,
@@ -110,7 +117,8 @@ export const createMessage = async (user, data) => {
   });
 
   const populated = await message.populate([
-    { path: 'sender', select: 'name email avatar role' }
+    { path: 'sender', select: 'name email avatar role' },
+    { path: 'recipient', select: 'name email avatar role' }
   ]);
 
   return populated;
@@ -118,15 +126,18 @@ export const createMessage = async (user, data) => {
 
 /**
  * Get messages for a project (project-level chat only, excludes task-scoped messages)
+ * Supports 1-on-1 direct developer communication per project bifurcation
  * Automatically filters out messages older than 10 days
  * Supports pagination
  */
 export const getProjectMessages = async (projectId, user, queryParams = {}) => {
-  await verifyProjectAccess(projectId, user);
+  const project = await verifyProjectAccess(projectId, user);
 
   const page = parseInt(queryParams.page, 10) || 1;
   const limit = parseInt(queryParams.limit, 10) || 50;
   const skip = (page - 1) * limit;
+
+  const targetDeveloperId = queryParams.developerId || queryParams.recipient || queryParams.developer;
 
   const query = {
     project: projectId,
@@ -134,9 +145,31 @@ export const getProjectMessages = async (projectId, user, queryParams = {}) => {
     createdAt: { $gte: getTenDaysCutoff() }
   };
 
+  if (user.role === 'MANAGER') {
+    if (targetDeveloperId && mongoose.Types.ObjectId.isValid(targetDeveloperId)) {
+      const devObjId = new mongoose.Types.ObjectId(targetDeveloperId);
+      query.$or = [
+        { sender: user._id, recipient: devObjId },
+        { sender: devObjId, recipient: user._id },
+        { sender: devObjId, recipient: null }, // fallback for unassigned recipient
+        { sender: user._id, recipient: null }  // general project broadcasts
+      ];
+    }
+  } else {
+    // Developer only sees their own 1-on-1 messages with manager (and general broadcasts)
+    const managerId = project.createdBy?._id || project.createdBy;
+    query.$or = [
+      { sender: user._id, recipient: managerId },
+      { sender: managerId, recipient: user._id },
+      { sender: user._id, recipient: null },
+      { sender: managerId, recipient: null }
+    ];
+  }
+
   const [messages, total] = await Promise.all([
     Message.find(query)
       .populate('sender', 'name email avatar role')
+      .populate('recipient', 'name email avatar role')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),

@@ -3,6 +3,7 @@ export const createMessageSchema = (req, res, next) => {
   const { content } = req.body || {};
   const project = req.body?.project || req.body?.projectId;
   const task = req.body?.task || req.body?.taskId;
+  const recipient = req.body?.recipient || req.body?.recipientId;
 
   // Check required fields
   if (!content || !String(content).trim()) {
@@ -19,7 +20,7 @@ export const createMessageSchema = (req, res, next) => {
     });
   }
 
-  // Normalize project and task fields for downstream controller & service
+  // Normalize project, task, recipient fields for downstream controller & service
   if (project) {
     req.body.project = project;
     req.body.projectId = project;
@@ -27,6 +28,10 @@ export const createMessageSchema = (req, res, next) => {
   if (task) {
     req.body.task = task;
     req.body.taskId = task;
+  }
+  if (recipient) {
+    req.body.recipient = recipient;
+    req.body.recipientId = recipient;
   }
 
   next();

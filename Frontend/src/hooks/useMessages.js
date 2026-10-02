@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { messagesApi } from '../api/messages.api';
 
-export function useMessages(channelType = 'project', channelId = null) {
+export function useMessages(channelType = 'project', channelId = null, recipientId = null) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -20,7 +20,8 @@ export function useMessages(channelType = 'project', channelId = null) {
     try {
       let res;
       if (channelType === 'project') {
-        res = await messagesApi.getProjectMessages(targetId);
+        const params = recipientId ? { developerId: recipientId } : {};
+        res = await messagesApi.getProjectMessages(targetId, params);
       } else {
         res = await messagesApi.getTaskMessages(targetId);
       }
@@ -42,7 +43,7 @@ export function useMessages(channelType = 'project', channelId = null) {
         setLoading(false);
       }
     }
-  }, [channelType, channelId]);
+  }, [channelType, channelId, recipientId]);
 
   useEffect(() => {
     if (!channelId) {
@@ -64,13 +65,14 @@ export function useMessages(channelType = 'project', channelId = null) {
         clearInterval(pollTimerRef.current);
       }
     };
-  }, [channelId, channelType, fetchMessages]);
+  }, [channelId, channelType, recipientId, fetchMessages]);
 
   const sendMessage = async (content) => {
     if (!channelId || !content.trim()) return;
     const payload = {
       content: content.trim(),
       ...(channelType === 'project' ? { projectId: channelId } : { taskId: channelId }),
+      ...(recipientId ? { recipient: recipientId } : {}),
     };
 
     const newMsg = await messagesApi.sendMessage(payload);

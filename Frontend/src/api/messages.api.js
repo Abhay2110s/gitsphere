@@ -7,9 +7,9 @@ export const messagesApi = {
     return res?.data ?? res;
   },
 
-  // Get project messages
-  getProjectMessages: async (projectId) => {
-    const res = await api.get(`/projects/${projectId}/messages`);
+  // Get project messages (supports filtering by individual developer)
+  getProjectMessages: async (projectId, params = {}) => {
+    const res = await api.get(`/projects/${projectId}/messages`, { params });
     if (Array.isArray(res)) return res;
     if (Array.isArray(res?.data)) return res.data;
     if (Array.isArray(res?.data?.messages)) return res.data.messages;

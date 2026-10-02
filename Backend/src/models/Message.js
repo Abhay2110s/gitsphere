@@ -17,6 +17,11 @@ const messageSchema = new mongoose.Schema(
       ref: 'Task',
       default: null
     },
+    recipient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
     content: {
       type: String,
       required: [true, 'Message content is required'],
