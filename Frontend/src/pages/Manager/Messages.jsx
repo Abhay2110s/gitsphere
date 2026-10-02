@@ -104,7 +104,7 @@ export default function Messages() {
         {/* 10-day Notice Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 text-xs font-mono shrink-0">
           <ClockIcon className="w-3.5 h-3.5" />
-          <span>10-Day Auto-Vanishing Active</span>
+
         </div>
       </div>
 
@@ -169,18 +169,16 @@ export default function Messages() {
                   <button
                     key={memberId || idx}
                     onClick={() => setSelectedDeveloperId(memberId)}
-                    className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${
-                      isSelected
+                    className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${isSelected
                         ? 'bg-[#181818] border border-[#3A3A3A] shadow'
                         : 'hover:bg-[#111111] border border-transparent text-[#888888]'
-                    }`}
+                      }`}
                   >
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                        isSelected
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isSelected
                           ? 'bg-blue-500 text-white shadow-lg'
                           : 'bg-[#141414] border border-[#262626] text-[#777777]'
-                      }`}
+                        }`}
                     >
                       <UserIcon className="w-4 h-4" />
                     </div>
@@ -229,9 +227,7 @@ export default function Messages() {
                       <span className="text-[10px] font-mono text-[#777777]">
                         Project: <span className="text-white font-bold">{currentProject.name}</span>
                       </span>
-                      <span className="text-[10px] font-mono text-amber-500/80">
-                        • 10d auto-retention
-                      </span>
+
                     </div>
                   </div>
                 </div>
@@ -273,9 +269,9 @@ export default function Messages() {
                     const roleLabel = msg.sender?.role || (isMine ? 'MANAGER' : 'USER');
                     const timeFormatted = msg.createdAt
                       ? new Date(msg.createdAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
                       : '';
 
                     return (
@@ -288,11 +284,10 @@ export default function Messages() {
                             {senderName}
                           </span>
                           <span
-                            className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
-                              roleLabel === 'MANAGER'
+                            className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${roleLabel === 'MANAGER'
                                 ? 'bg-purple-950/40 text-purple-400 border-purple-800/40'
                                 : 'bg-blue-950/40 text-blue-400 border-blue-800/40'
-                            }`}
+                              }`}
                           >
                             {roleLabel === 'MANAGER' ? 'MGR' : 'DEV'}
                           </span>
@@ -301,11 +296,10 @@ export default function Messages() {
                           </span>
                         </div>
                         <div
-                          className={`max-w-lg px-4 py-2.5 rounded-2xl text-xs leading-relaxed break-words ${
-                            isMine
+                          className={`max-w-lg px-4 py-2.5 rounded-2xl text-xs leading-relaxed break-words ${isMine
                               ? 'bg-white text-black font-medium rounded-br-none shadow-md'
                               : 'bg-[#141414] border border-[#262626] text-[#E0E0E0] rounded-bl-none'
-                          }`}
+                            }`}
                         >
                           {msg.content}
                         </div>

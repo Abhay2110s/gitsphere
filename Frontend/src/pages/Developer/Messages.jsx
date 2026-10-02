@@ -83,7 +83,7 @@ export default function Messages() {
         />
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 text-xs font-mono shrink-0 self-start sm:self-auto">
           <ClockIcon className="w-3.5 h-3.5" />
-          <span>10-Day Auto-Vanishing Active</span>
+
         </div>
       </div>
 
@@ -144,18 +144,16 @@ export default function Messages() {
                 {managerId && (
                   <button
                     onClick={() => setSelectedRecipientId(managerId)}
-                    className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${
-                      selectedRecipientId === managerId
-                        ? 'bg-[#181818] border border-[#3A3A3A] shadow'
-                        : 'hover:bg-[#111111] border border-transparent text-[#888888]'
-                    }`}
+                    className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${selectedRecipientId === managerId
+                      ? 'bg-[#181818] border border-[#3A3A3A] shadow'
+                      : 'hover:bg-[#111111] border border-transparent text-[#888888]'
+                      }`}
                   >
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                        selectedRecipientId === managerId
-                          ? 'bg-purple-600 text-white shadow-lg'
-                          : 'bg-[#141414] border border-[#262626] text-purple-400'
-                      }`}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${selectedRecipientId === managerId
+                        ? 'bg-purple-600 text-white shadow-lg'
+                        : 'bg-[#141414] border border-[#262626] text-purple-400'
+                        }`}
                     >
                       <UserIcon className="w-4 h-4" />
                     </div>
@@ -186,18 +184,16 @@ export default function Messages() {
                     <button
                       key={devId || idx}
                       onClick={() => setSelectedRecipientId(devId)}
-                      className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${
-                        isSelected
-                          ? 'bg-[#181818] border border-[#3A3A3A] shadow'
-                          : 'hover:bg-[#111111] border border-transparent text-[#888888]'
-                      }`}
+                      className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 ${isSelected
+                        ? 'bg-[#181818] border border-[#3A3A3A] shadow'
+                        : 'hover:bg-[#111111] border border-transparent text-[#888888]'
+                        }`}
                     >
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                          isSelected
-                            ? 'bg-blue-500 text-white shadow-lg'
-                            : 'bg-[#141414] border border-[#262626] text-[#777777]'
-                        }`}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isSelected
+                          ? 'bg-blue-500 text-white shadow-lg'
+                          : 'bg-[#141414] border border-[#262626] text-[#777777]'
+                          }`}
                       >
                         <UserIcon className="w-4 h-4" />
                       </div>
@@ -232,11 +228,10 @@ export default function Messages() {
               <div className="p-4 border-b border-[#1C1C1C] bg-[#0C0C0C] flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      activeContactRole === 'MANAGER'
-                        ? 'bg-purple-950/40 border border-purple-800/40 text-purple-400'
-                        : 'bg-blue-950/40 border border-blue-800/40 text-blue-400'
-                    }`}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeContactRole === 'MANAGER'
+                      ? 'bg-purple-950/40 border border-purple-800/40 text-purple-400'
+                      : 'bg-blue-950/40 border border-blue-800/40 text-blue-400'
+                      }`}
                   >
                     <UserIcon className="w-4 h-4" />
                   </div>
@@ -246,11 +241,10 @@ export default function Messages() {
                         1-on-1 Chat with {activeContactName}
                       </h3>
                       <span
-                        className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
-                          activeContactRole === 'MANAGER'
-                            ? 'bg-purple-950/40 text-purple-400 border-purple-800/40'
-                            : 'bg-blue-950/40 text-blue-400 border-blue-800/40'
-                        }`}
+                        className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${activeContactRole === 'MANAGER'
+                          ? 'bg-purple-950/40 text-purple-400 border-purple-800/40'
+                          : 'bg-blue-950/40 text-blue-400 border-blue-800/40'
+                          }`}
                       >
                         {activeContactRole === 'MANAGER' ? 'LEAD MGR' : 'DEV'}
                       </span>
@@ -259,9 +253,7 @@ export default function Messages() {
                       <span className="text-[10px] font-mono text-[#777777]">
                         Project: <span className="text-white font-bold">{currentProject.name}</span>
                       </span>
-                      <span className="text-[10px] font-mono text-amber-500/80">
-                        • 10d auto-retention
-                      </span>
+
                     </div>
                   </div>
                 </div>

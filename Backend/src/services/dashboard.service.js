@@ -3,6 +3,7 @@ import Task from '../models/Task.js';
 import User from '../models/User.js';
 import Contribution from '../models/Contribution.js';
 import ActivityLog from '../models/ActivityLog.js';
+import Notification from '../models/Notification.js';
 
 /**
  * Get aggregated metrics for Manager Dashboard (Section 34)

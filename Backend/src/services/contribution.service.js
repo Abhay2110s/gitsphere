@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Contribution from '../models/Contribution.js';
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
+import CodeReview from '../models/CodeReview.js';
+import Notification from '../models/Notification.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
 import { logActivity } from './activity.service.js';
