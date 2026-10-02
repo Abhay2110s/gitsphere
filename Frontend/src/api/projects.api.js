@@ -76,4 +76,17 @@ export const projectsApi = {
     const res = await api.get(`/projects/${projectId}/versions/${version}`);
     return res.data;
   },
+
+  // Create a new project version snapshot (Manager only)
+  createProjectVersion: async (projectId, versionData = {}) => {
+    const res = await api.post(`/projects/${projectId}/versions`, versionData);
+    return res.data;
+  },
+
+  // Activate / Rollback to a specific project version (Manager only)
+  activateProjectVersion: async (projectId, version) => {
+    const res = await api.post(`/projects/${projectId}/versions/${version}/activate`);
+    return res.data;
+  },
 };
+

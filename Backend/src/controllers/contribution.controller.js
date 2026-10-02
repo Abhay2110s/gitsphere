@@ -157,3 +157,39 @@ export const getVersionByNumber = asyncHandler(async (req, res) => {
     data: version
   });
 });
+
+/**
+ * @desc    Create a new project version release snapshot
+ * @route   POST /api/v1/projects/:projectId/versions
+ * @access  Private (Manager only)
+ */
+export const createProjectVersion = asyncHandler(async (req, res) => {
+  const version = await contributionService.createProjectVersion(
+    req.params.projectId,
+    req.user,
+    req.body
+  );
+  return sendSuccess(res, {
+    statusCode: 201,
+    message: `Project version v${version.version} created successfully`,
+    data: version
+  });
+});
+
+/**
+ * @desc    Activate / Rollback to a specific project version
+ * @route   POST /api/v1/projects/:projectId/versions/:version/activate
+ * @access  Private (Manager only)
+ */
+export const activateProjectVersion = asyncHandler(async (req, res) => {
+  const result = await contributionService.activateProjectVersion(
+    req.params.projectId,
+    req.params.version,
+    req.user
+  );
+  return sendSuccess(res, {
+    message: result.message,
+    data: result
+  });
+});
+

@@ -31,7 +31,7 @@ const contributionSchema = new mongoose.Schema(
     task: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Task',
-      required: [true, 'Task reference is required']
+      default: null
     },
     developer: {
       type: mongoose.Schema.Types.ObjectId,

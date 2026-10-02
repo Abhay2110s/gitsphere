@@ -108,11 +108,27 @@ router.get(
   contributionController.getVersionHistory
 );
 
-// 11. Specific Version by Number
+// 11. Create Project Version Snapshot (Manager only)
+router.post(
+  '/:projectId/versions',
+  requireManager,
+  verifyProjectAccess,
+  contributionController.createProjectVersion
+);
+
+// 12. Specific Version by Number
 router.get(
   '/:projectId/versions/:version',
   verifyProjectAccess,
   contributionController.getVersionByNumber
+);
+
+// 13. Activate / Rollback Version (Manager only)
+router.post(
+  '/:projectId/versions/:version/activate',
+  requireManager,
+  verifyProjectAccess,
+  contributionController.activateProjectVersion
 );
 
 export default router;

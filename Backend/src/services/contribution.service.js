@@ -711,3 +711,157 @@ export const getAllContributionsForUser = async (user, queryParams = {}) => {
 
   return contributions;
 };
+
+// ============================================================
+// 11. Create Project Version Release (Manager only)
+// ============================================================
+
+/**
+ * Creates an official Project Version release snapshot.
+ * POST /api/v1/projects/:projectId/versions
+ */
+export const createProjectVersion = async (projectId, manager, data = {}) => {
+  const project = await Project.findById(projectId);
+  if (!project) {
+    throw new AppError('Project not found', 404, 'NOT_FOUND');
+  }
+
+  if (!project.createdBy.equals(manager._id)) {
+    throw new AppError('You can only create versions for projects you created.', 403, 'FORBIDDEN');
+  }
+
+  const { title, commitMessage, files } = data;
+
+  // Determine files for the new version: use passed files or current project files
+  let versionFiles = [];
+  if (Array.isArray(files) && files.length > 0) {
+    versionFiles = files.map((f) => ({
+      path: f.path.trim(),
+      content: f.content || '',
+      language: f.language || 'javascript'
+    }));
+  } else if (Array.isArray(project.currentFiles) && project.currentFiles.length > 0) {
+    versionFiles = project.currentFiles.map((f) => ({
+      path: f.path,
+      content: f.content,
+      language: f.language || 'javascript'
+    }));
+  } else {
+    // Default initial template file if empty
+    versionFiles = [
+      {
+        path: 'index.js',
+        content: `// ${project.name} - Version Release\nconsole.log("GitSphere Project: ${project.name}");\n`,
+        language: 'javascript'
+      }
+    ];
+  }
+
+  // Calculate next version number
+  const latestContribution = await Contribution.findOne({ project: projectId })
+    .sort({ version: -1 })
+    .select('version');
+
+  const nextVersion = Math.max(
+    (latestContribution ? latestContribution.version : 0) + 1,
+    (project.currentVersion || 0) + 1
+  );
+
+  // Update project current files and current version
+  project.currentFiles = versionFiles;
+  project.currentVersion = nextVersion;
+  await project.save();
+
+  // Create approved contribution version entry
+  const versionRecord = await Contribution.create({
+    project: projectId,
+    task: null,
+    developer: manager._id,
+    version: nextVersion,
+    files: versionFiles,
+    projectSnapshot: versionFiles,
+    status: 'APPROVED',
+    submittedAt: new Date(),
+    reviewedAt: new Date(),
+    reviewedBy: manager._id,
+    reviewComment: commitMessage || title || `Released project version v${nextVersion}`
+  });
+
+  logActivity({
+    user: manager._id,
+    project: project._id,
+    action: 'PROJECT_VERSION_CREATED',
+    metadata: {
+      version: nextVersion,
+      title: title || `Release v${nextVersion}`
+    }
+  });
+
+  return versionRecord.populate([
+    { path: 'developer', select: 'name email avatar role' },
+    { path: 'reviewedBy', select: 'name email avatar role' },
+    { path: 'project', select: 'name currentVersion' }
+  ]);
+};
+
+// ============================================================
+// 12. Activate / Rollback Project Version (Manager only)
+// ============================================================
+
+/**
+ * Sets an existing version snapshot as active project code.
+ * POST /api/v1/projects/:projectId/versions/:version/activate
+ */
+export const activateProjectVersion = async (projectId, versionNumber, manager) => {
+  const project = await Project.findById(projectId);
+  if (!project) {
+    throw new AppError('Project not found', 404, 'NOT_FOUND');
+  }
+
+  if (!project.createdBy.equals(manager._id)) {
+    throw new AppError('You can only activate versions in projects you created.', 403, 'FORBIDDEN');
+  }
+
+  const version = parseInt(versionNumber, 10);
+  if (isNaN(version) || version < 1) {
+    throw new AppError('Invalid version number', 400, 'INVALID_VERSION');
+  }
+
+  const targetVersion = await Contribution.findOne({
+    project: projectId,
+    version
+  });
+
+  if (!targetVersion) {
+    throw new AppError(`Version ${version} not found for this project`, 404, 'NOT_FOUND');
+  }
+
+  // Restore project files from the version snapshot or files
+  const restoredFiles =
+    targetVersion.projectSnapshot && targetVersion.projectSnapshot.length > 0
+      ? targetVersion.projectSnapshot
+      : targetVersion.files;
+
+  project.currentFiles = restoredFiles.map((f) => ({
+    path: f.path,
+    content: f.content,
+    language: f.language || 'javascript'
+  }));
+  project.currentVersion = version;
+  await project.save();
+
+  logActivity({
+    user: manager._id,
+    project: project._id,
+    action: 'PROJECT_VERSION_ACTIVATED',
+    metadata: {
+      version
+    }
+  });
+
+  return {
+    message: `Project version v${version} activated successfully`,
+    currentVersion: version,
+    currentFiles: project.currentFiles
+  };
+};
