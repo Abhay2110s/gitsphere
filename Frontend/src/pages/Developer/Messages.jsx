@@ -81,10 +81,6 @@ export default function Messages() {
           title="Developer Messages"
           description="Communicate 1-on-1 with your project manager and team members separated by project."
         />
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 text-xs font-mono shrink-0 self-start sm:self-auto">
-          <ClockIcon className="w-3.5 h-3.5" />
-
-        </div>
       </div>
 
       <div className="border border-[#222222] rounded-2xl overflow-hidden bg-[#0A0A0A] grid grid-cols-1 lg:grid-cols-12 min-h-[600px] shadow-2xl">

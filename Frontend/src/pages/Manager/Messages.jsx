@@ -100,12 +100,6 @@ export default function Messages() {
             Communicate 1-on-1 with individual developers separated by project. Messages auto-expire after 10 days.
           </p>
         </div>
-
-        {/* 10-day Notice Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 text-xs font-mono shrink-0">
-          <ClockIcon className="w-3.5 h-3.5" />
-
-        </div>
       </div>
 
       {/* Main Container */}
@@ -227,7 +221,6 @@ export default function Messages() {
                       <span className="text-[10px] font-mono text-[#777777]">
                         Project: <span className="text-white font-bold">{currentProject.name}</span>
                       </span>
-
                     </div>
                   </div>
                 </div>
