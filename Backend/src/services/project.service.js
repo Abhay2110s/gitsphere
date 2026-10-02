@@ -39,10 +39,10 @@ export const getProjects = async (user, queryParams = {}) => {
 
   const query = {};
 
-  // Access filter: Manager sees created or memberships, User sees memberships
+  // Access filter: Manager sees only projects they created, User sees memberships
   const role = String(user.role || '').toUpperCase();
   if (role === 'MANAGER') {
-    query.$or = [{ createdBy: user._id }, { members: user._id }];
+    query.createdBy = user._id;
   } else {
     query.members = user._id;
   }

@@ -33,22 +33,22 @@ export default function Tasks() {
 
   const normalizeStatus = (status) => (status ? String(status).toUpperCase() : '');
 
-  // Extract developers from projects for assignment controls
-  const availableDevelopers = useMemo(() => {
-    const map = new Map();
-    (projects || []).forEach((p) => {
-      if (p.members && Array.isArray(p.members)) {
-        p.members.forEach((m) => {
-          const id = String(m._id || m.id || m);
-          if (!map.has(id)) {
-            const name = m.name || m.fullName || m.email || id;
-            map.set(id, { id, _id: id, name, email: m.email });
-          }
-        });
-      }
+  // Extract developers strictly for the selected task's project
+  const selectedTaskProjectDevelopers = useMemo(() => {
+    if (!selectedTask) return [];
+    const projId = String(selectedTask.project?._id || selectedTask.project?.id || selectedTask.project || '');
+    const foundProj = (projects || []).find((p) => String(p._id || p.id) === projId);
+    if (!foundProj?.members || !Array.isArray(foundProj.members)) return [];
+    return foundProj.members.map((m) => {
+      const id = String(m._id || m.id || m);
+      return {
+        id,
+        _id: id,
+        name: m.name || m.fullName || m.email || id,
+        email: m.email || '',
+      };
     });
-    return Array.from(map.values());
-  }, [projects]);
+  }, [selectedTask, projects]);
 
   // Filter tasks by search query and selected project
   const filteredTasks = useMemo(() => {
@@ -343,7 +343,7 @@ export default function Tasks() {
         onDeleteTask={handleDeleteTask}
         onUpdateTask={handleUpdateTask}
         onAssignTask={handleAssignTask}
-        availableDevelopers={availableDevelopers}
+        availableDevelopers={selectedTaskProjectDevelopers}
       />
 
       {/* Quick Delete Confirmation Modal */}
@@ -364,7 +364,6 @@ export default function Tasks() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreateTask={handleCreateTask}
         availableProjects={projects}
-        availableDevelopers={availableDevelopers}
       />
     </div>
   );

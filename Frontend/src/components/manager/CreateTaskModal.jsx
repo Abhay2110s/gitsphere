@@ -32,11 +32,10 @@ export default function CreateTaskModal({
   const defaultProjectId = projectList.length > 0 ? String(projectList[0]._id || projectList[0].id) : '';
   const selectedProjectId = formData.project || defaultProjectId;
 
-  // Derive developer options based on selected project members or available developers
+  // Derive developer options strictly from the selected project's enrolled members
   const developerOptions = useMemo(() => {
     const map = new Map();
 
-    // If a project is selected, prioritize its members
     if (selectedProjectId) {
       const selectedProj = projectList.find(
         (p) => String(p._id || p.id) === String(selectedProjectId)
@@ -50,30 +49,8 @@ export default function CreateTaskModal({
       }
     }
 
-    // Also include members from all projects
-    projectList.forEach((p) => {
-      if (p.members && Array.isArray(p.members)) {
-        p.members.forEach((m) => {
-          const id = String(m._id || m.id || m);
-          if (!map.has(id)) {
-            const name = m.name || m.fullName || m.email || id;
-            map.set(id, { id, name });
-          }
-        });
-      }
-    });
-
-    // Add general available developers
-    availableDevelopers.forEach((d) => {
-      const id = String(d._id || d.id || d);
-      if (!map.has(id)) {
-        const name = d.name || d.fullName || d.email || id;
-        map.set(id, { id, name });
-      }
-    });
-
     return Array.from(map.values());
-  }, [selectedProjectId, projectList, availableDevelopers]);
+  }, [selectedProjectId, projectList]);
 
   if (!isOpen) return null;
 
@@ -214,7 +191,9 @@ export default function CreateTaskModal({
                 onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-white text-sm focus:border-white focus:outline-none transition-colors disabled:opacity-50"
               >
-                <option value="" className="bg-[#141414] text-[#888888]">Unassigned</option>
+                <option value="" className="bg-[#141414] text-[#888888]">
+                  {developerOptions.length === 0 ? 'Unassigned (No developers enrolled in this project)' : 'Unassigned'}
+                </option>
                 {developerOptions.map((d) => (
                   <option key={d.id} value={d.id} className="bg-[#141414] text-white">
                     {d.name}
