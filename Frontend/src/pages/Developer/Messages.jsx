@@ -7,7 +7,7 @@ import PageHeader from '../../components/developer/PageHeader';
 import MessageList from '../../components/developer/MessageList';
 import MessageComposer from '../../components/developer/MessageComposer';
 import EmptyState from '../../components/developer/EmptyState';
-import { MessageIcon, FolderIcon, TaskCheckIcon } from '../../components/common/Icons';
+import { MessageIcon, FolderIcon, TaskCheckIcon, ClockIcon } from '../../components/common/Icons';
 
 export default function Messages() {
   const { user } = useAuth();
@@ -37,10 +37,16 @@ export default function Messages() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Developer Messages"
-        description="Collaborative communication with managers and team members organized by project and task tickets."
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <PageHeader
+          title="Developer Messages"
+          description="Collaborative communication with managers and team members organized by project and task tickets."
+        />
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 text-xs font-mono shrink-0 self-start sm:self-auto">
+          <ClockIcon className="w-3.5 h-3.5" />
+          <span>10-Day Auto-Vanishing Active</span>
+        </div>
+      </div>
 
       <div className="border border-[#222222] rounded-2xl overflow-hidden bg-[#0A0A0A] grid grid-cols-1 lg:grid-cols-12 min-h-[550px]">
         {/* Left Column: Channels */}

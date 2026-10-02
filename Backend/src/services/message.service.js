@@ -1,8 +1,12 @@
 import mongoose from 'mongoose';
 import Message from '../models/Message.js';
 import Project from '../models/Project.js';
+import Task from '../models/Task.js';
 import { AppError } from '../utils/response.js';
 import { hasProjectAccess } from '../middleware/projectAccess.middleware.js';
+
+// 10-day auto-expiry cutoff helper (864,000,000 ms)
+const getTenDaysCutoff = () => new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
 
 /**
  * Helper to verify the user is a project member or the project manager
@@ -91,6 +95,7 @@ export const createMessage = async (user, { content, project: projectId, task: t
 
 /**
  * Get messages for a project (project-level chat only, excludes task-scoped messages)
+ * Automatically filters out messages older than 10 days
  * Supports pagination
  */
 export const getProjectMessages = async (projectId, user, queryParams = {}) => {
@@ -102,7 +107,8 @@ export const getProjectMessages = async (projectId, user, queryParams = {}) => {
 
   const query = {
     project: projectId,
-    task: null // Only project-level messages (not task-scoped)
+    task: null, // Only project-level messages (not task-scoped)
+    createdAt: { $gte: getTenDaysCutoff() }
   };
 
   const [messages, total] = await Promise.all([
@@ -161,7 +167,10 @@ export const getTaskMessages = async (taskId, user, queryParams = {}) => {
   const limit = parseInt(queryParams.limit, 10) || 50;
   const skip = (page - 1) * limit;
 
-  const query = { task: taskId };
+  const query = {
+    task: taskId,
+    createdAt: { $gte: getTenDaysCutoff() }
+  };
 
   const [messages, total] = await Promise.all([
     Message.find(query)
@@ -221,7 +230,8 @@ export const markMessagesAsRead = async (user, { projectId, taskId }) => {
   }
 
   const query = {
-    readBy: { $ne: user._id } // Only messages not yet read by this user
+    readBy: { $ne: user._id }, // Only messages not yet read by this user
+    createdAt: { $gte: getTenDaysCutoff() }
   };
 
   if (taskId) {
@@ -249,7 +259,8 @@ export const markMessagesAsRead = async (user, { projectId, taskId }) => {
 export const getUnreadCount = async (user, { projectId, taskId }) => {
   const query = {
     readBy: { $ne: user._id },
-    sender: { $ne: user._id } // Don't count own messages
+    sender: { $ne: user._id }, // Don't count own messages
+    createdAt: { $gte: getTenDaysCutoff() }
   };
 
   if (taskId) {

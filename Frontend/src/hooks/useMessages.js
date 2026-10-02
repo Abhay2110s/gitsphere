@@ -1,19 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { messagesApi } from '../api/messages.api';
 
 export function useMessages(channelType = 'project', channelId = null) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const pollTimerRef = useRef(null);
 
-  const fetchMessages = useCallback(async (id = channelId) => {
+  const fetchMessages = useCallback(async (id = channelId, isBackground = false) => {
     const targetId = id || channelId;
     if (!targetId) {
       setMessages([]);
       return;
     }
-    setLoading(true);
-    setError(null);
+    if (!isBackground) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       let res;
       if (channelType === 'project') {
@@ -21,43 +24,47 @@ export function useMessages(channelType = 'project', channelId = null) {
       } else {
         res = await messagesApi.getTaskMessages(targetId);
       }
-      setMessages(Array.isArray(res) ? res : res?.messages || []);
+      const newMessages = Array.isArray(res) ? res : res?.messages || [];
+      setMessages(newMessages);
+
+      // Auto-mark unread messages as read
+      const unreadIds = newMessages.map((m) => m._id || m.id).filter(Boolean);
+      if (unreadIds.length > 0) {
+        messagesApi.markAsRead(unreadIds).catch(() => {});
+      }
     } catch (err) {
-      setError(err);
-      setMessages([]);
+      if (!isBackground) {
+        setError(err);
+        setMessages([]);
+      }
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   }, [channelType, channelId]);
 
   useEffect(() => {
     if (!channelId) {
+      setMessages([]);
       return;
     }
-    let ignore = false;
-    const fetcher = channelType === 'project'
-      ? messagesApi.getProjectMessages(channelId)
-      : messagesApi.getTaskMessages(channelId);
 
-    fetcher
-      .then((res) => {
-        if (!ignore) {
-          setMessages(Array.isArray(res) ? res : res?.messages || []);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(err);
-          setMessages([]);
-          setLoading(false);
-        }
-      });
+    fetchMessages(channelId, false);
+
+    // Background polling every 4 seconds for real-time manager-developer chat updates
+    pollTimerRef.current = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchMessages(channelId, true);
+      }
+    }, 4000);
 
     return () => {
-      ignore = true;
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+      }
     };
-  }, [channelId, channelType]);
+  }, [channelId, channelType, fetchMessages]);
 
   const sendMessage = async (content) => {
     if (!channelId || !content.trim()) return;
@@ -67,9 +74,13 @@ export function useMessages(channelType = 'project', channelId = null) {
     };
 
     const newMsg = await messagesApi.sendMessage(payload);
-    // Append to conversation only after successful backend response
     if (newMsg) {
-      setMessages((prev) => [...prev, newMsg]);
+      setMessages((prev) => {
+        // Prevent duplicate append if poll already grabbed it
+        const id = newMsg._id || newMsg.id;
+        if (prev.some((m) => (m._id || m.id) === id)) return prev;
+        return [...prev, newMsg];
+      });
     }
     return newMsg;
   };

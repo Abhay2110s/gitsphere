@@ -58,10 +58,12 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
-// Database Indexes as defined in Section 41
+// Database Indexes as defined in Section 41 + 10-day TTL auto-expiry index
 messageSchema.index({ project: 1, createdAt: -1 });
 messageSchema.index({ task: 1, createdAt: -1 });
 messageSchema.index({ sender: 1 });
+// Auto-expire messages after 10 days (864,000 seconds)
+messageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 864000 });
 
 const Message = mongoose.model('Message', messageSchema);
 
